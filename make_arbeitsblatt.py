@@ -5,8 +5,12 @@ import argparse, xml.etree.ElementTree as ET
 def save(tree, path):
     tree.write(path, encoding="utf-8", xml_declaration=True)
 
+def _staff_num(note):
+    s = note.findtext("staff")
+    return int(s) if s and s.isdigit() else None
+
+# ---------------- Scales ----------------
 def scales_hide(root):
-    # Conceal accidentals by removing <alter> and <accidental> so nothing prints.
     changed=0
     for note in root.findall(".//note"):
         p = note.find("pitch")
@@ -20,11 +24,11 @@ def scales_hide(root):
     return changed
 
 def scales_delete(root):
-    # Same as hide for scales; deleting the accidental glyphs is the practical way to conceal.
+    # same effect as hide for scales
     return scales_hide(root)
 
+# ---------------- Intervals ----------------
 def intervals_hide(root):
-    # Hide quarter notes (leave whole ones) with print-object="no"
     hidden=0
     for note in root.findall(".//note"):
         typ = (note.findtext("type") or "").strip().lower()
@@ -33,7 +37,6 @@ def intervals_hide(root):
     return hidden
 
 def intervals_delete(root):
-    # Remove quarter notes completely
     removed=0
     for part in root.findall("part"):
         for meas in part.findall("measure"):
@@ -43,43 +46,82 @@ def intervals_delete(root):
                     meas.remove(note); removed+=1
     return removed
 
+# ---------------- Chords ----------------
 def chords_hide(root):
-    # Hide all chord tones (notes with <chord/>) keep bass/root visible
+    # Hide ALL notes in the upper staff (staff==1), leave lower staff visible.
+    # Fallback: if no staff info, hide chord tones (notes carrying <chord/>).
+    saw_staff=False
     hidden=0
     for note in root.findall(".//note"):
-        if note.find("chord") is not None:
-            note.set("print-object","no"); hidden+=1
+        sn = _staff_num(note)
+        if sn is not None:
+            saw_staff=True
+            if sn == 1:
+                note.set("print-object","no"); hidden+=1
+    if not saw_staff:
+        # fallback to chord tones
+        for note in root.findall(".//note"):
+            if note.find("chord") is not None:
+                note.set("print-object","no"); hidden+=1
     return hidden
 
 def chords_delete(root):
-    # Delete chord tones (notes with <chord/>)
+    # Delete ALL notes in the upper staff (staff==1). Fallback: delete chord tones.
+    saw_staff=False
     removed=0
     for part in root.findall("part"):
         for meas in part.findall("measure"):
             for note in list(meas.findall("note")):
-                if note.find("chord") is not None:
-                    meas.remove(note); removed+=1
+                sn = _staff_num(note)
+                if sn is not None:
+                    saw_staff=True
+                    if sn == 1:
+                        meas.remove(note); removed+=1
+    if not saw_staff:
+        for part in root.findall("part"):
+            for meas in part.findall("measure"):
+                for note in list(meas.findall("note")):
+                    if note.find("chord") is not None:
+                        meas.remove(note); removed+=1
     return removed
 
+# ---------------- Rhythms ----------------
+def _strip_visual_children(note):
+    # Remove beams, flags, stems, noteheads, ties/tieds, notations, and accidentals/dots for safety
+    for tag in ["beam","flag","stem","notehead","accidental","dot"]:
+        for el in list(note.findall(tag)):
+            note.remove(el)
+    # Remove ties
+    for el in list(note.findall("tie")):
+        note.remove(el)
+    notations = note.find("notations")
+    if notations is not None:
+        note.remove(notations)
+
 def rhythms_hide(root):
-    # Hide all pitched notes by setting print-object="no" (rests usually remain visible)
+    # Hide all notes AND their visual connectors (beams, stems, flags, etc.).
     hidden=0
     for note in root.findall(".//note"):
         if note.find("pitch") is not None:
-            note.set("print-object","no"); hidden+=1
+            note.set("print-object","no")
+            _strip_visual_children(note)
+            hidden+=1
     return hidden
 
 def rhythms_delete(root):
-    # Convert all pitched notes to rests (preserve duration so bars stay intact)
+    # Convert all pitched notes to rests (preserve duration), and strip visual children.
     changed=0
     for note in root.findall(".//note"):
         p = note.find("pitch")
         if p is not None:
-            note.remove(p); changed+=1
-        if note.find("rest") is None:
-            ET.SubElement(note, "rest")
+            note.remove(p)
+            if note.find("rest") is None:
+                ET.SubElement(note, "rest")
+            _strip_visual_children(note)
+            changed+=1
     return changed
 
+# ---------------- Dispatch ----------------
 def apply_mode(root, page, action):
     if page=="scales":
         return (scales_hide if action=="hide" else scales_delete)(root)
