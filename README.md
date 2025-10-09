@@ -2,6 +2,7 @@
 # Übungsblatt Generator Toolkit
 
 A small toolkit to build ear‑training worksheets (`Übungsblatt`) and student versions (`Arbeitsblatt`) from MusicXML templates. It produces four sections:
+
 - **Scales** (`Hoeren_scales.musicxml`)
 - **Intervals** (`Hoeren_intervals.musicxml`)
 - **Chords** (`Hoeren_chords.musicxml`)
@@ -14,6 +15,7 @@ The toolkit is **profile‑able** via YAML, deterministic with a seed, and gener
 ## Quick Start
 
 1) Put your templates in `sibelius/` (or any folder you like) and point the YAML to them:
+
 ```
 sibelius/Hoeren_scales.musicxml
 sibelius/Hoeren_intervals.musicxml
@@ -24,11 +26,13 @@ sibelius/Hoeren_rhythm.musicxml
 2) Edit `uebungsblatt.yaml` (see schema below).
 
 3) Generate everything:
+
 ```bash
 python uebungsblatt_cli.py --config uebungsblatt.yaml
 ```
 
 This will create:
+
 ```
 OUT/
   Hoeren_scales.musicxml
@@ -130,7 +134,9 @@ profiles:
       set: [m2, M2, m3, M3, P4, TT, P5, m6, M6, m7, M7, P8]
       direction: both
 ```
+
 Use a profile:
+
 ```bash
 python uebungsblatt_cli.py --config uebungsblatt.yaml --profile exam
 ```
@@ -142,6 +148,7 @@ python uebungsblatt_cli.py --config uebungsblatt.yaml --profile exam
 The CLI reads the YAML, calls each generator, and then calls `make_arbeitsblatt.py` to produce the corresponding worksheet. It also **auto‑creates the scales Arbeitsblatt from the Übungsblatt** using the “hide accidentals” rule.
 
 **Command:**
+
 ```bash
 python uebungsblatt_cli.py --config uebungsblatt.yaml [--profile NAME]
 ```
@@ -186,12 +193,15 @@ python uebungsblatt_cli.py --config uebungsblatt.yaml [--profile NAME]
 ```
 
 **Behavior**
+
 - Only pitches listed in `--placeholders` are randomized.
 - Endpoint safety: the **first E4** and **last E5** in the score are **forced natural** and excluded from randomization.
 - Any existing `<accidental>` elements on changed notes are removed (MuseScore renders based on `<alter>`; the Arbeitsblatt step will take care of visibility).
 
 ### `generate_intervals.py`, `generate_chords.py`, `generate_rhythms.py`
+
 Your local versions may expose slightly different flags; the CLI passes:
+
 - `--input`, `--output`, `--seed`
 - Intervals: set & direction from YAML
 - Chords: triad set & inversion from YAML
@@ -245,6 +255,7 @@ Your local versions may expose slightly different flags; the CLI passes:
 ## Common Recipes
 
 ### Re‑roll only scales with a different seed
+
 ```bash
 python generate_scales.py --input sibelius/Hoeren_scales.musicxml \
   --output OUT/Hoeren_scales.musicxml \
@@ -258,6 +269,7 @@ python make_arbeitsblatt.py --mode scales --action hide \
 ```
 
 ### Use the `exam` profile
+
 ```bash
 python uebungsblatt_cli.py --config uebungsblatt.yaml --profile exam
 ```
@@ -299,3 +311,14 @@ python3 -m venv ./.venv
 # actrivate
 source .venv/bin/activate
 ```
+
+## Prep & wrap
+
+You still need to do, after generating musicxml files:
+
+- Open with Musescore
+- In musescore, set invisible objects to remain hidden
+- for the rhythm, select all notes/rests and make invisible
+- for the scales, select all alteration symbols and make invisible
+- Save as musescore files
+- (optional) bundle in a .zip for sharing
