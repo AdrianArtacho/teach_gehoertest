@@ -59,21 +59,16 @@ def select_hidden_playback_notes(root, playback_voice=None):
 
     if hidden:
         return hidden
-
-    if playback_voice is not None:
-        key = str(playback_voice)
-        if key in by_voice:
-            return by_voice[key]
-
+    if playback_voice is not None and str(playback_voice) in by_voice:
+        return by_voice[str(playback_voice)]
     if len(by_voice) == 2:
         vnum = sorted(by_voice.keys(), key=lambda x: int(x))[-1]
         return by_voice[vnum]
-
     return []
 
 
 def _force_natural(note):
-    """Ensure note plays natural (alter=0) and remove any accidental glyph."""
+    """Ensure note plays natural (alter=0) and remove accidental glyphs."""
     p = note.find("pitch")
     if p is None:
         return
@@ -103,8 +98,7 @@ def flip_to_single_voice(root, keep_notes):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Randomize accidentals on hidden playback voice; "
-                    "enforce natural visible voice; optional single-voice flip."
+        description="Randomize accidentals on hidden playback voice; optional single-voice flip."
     )
     ap.add_argument("--input", required=True)
     ap.add_argument("--output", required=True)
@@ -140,12 +134,9 @@ def main():
     tree = ET.parse(args.input)
     root = tree.getroot()
 
-    # Collect all notes once (we'll use this for visible/hidden distinction)
-    all_notes = root.findall(".//note")
     hidden_notes = select_hidden_playback_notes(root, playback_voice=args.playback_voice)
-    hidden_ids = set(map(id, hidden_notes))
 
-    # 1) Endpoints safety in hidden voice: first E4 and last E5 -> natural
+    # 1) Endpoints safety in hidden voice: first E4 and last E5 -> natural, never altered
     indices_to_skip = set()
     first_e4 = None
     last_e5 = None
@@ -177,25 +168,17 @@ def main():
         if alt_el is None:
             alt_el = ET.SubElement(p, "alter")
         alt_el.text = "0" if alter == 0 else str(int(alter))
-        # Hidden voice prints nothing anyway; remove any explicit accidental glyphs
+        # hidden voice prints nothing anyway; remove any explicit accidental glyphs
         for acc in list(note.findall("accidental")):
             note.remove(acc)
         changed += 1
 
-    # 3) Enforce natural visible (silent) voice: any pitched note NOT in hidden set
-    for note in all_notes:
-        if id(note) in hidden_ids:
-            continue
-        if note.find("pitch") is not None:
-            _force_natural(note)
-
-    # 4) Flip to single visible voice (solution sheet)
+    # 3) Flip to single visible voice (solution sheet)
     if args.flip_to_single_voice and hidden_notes:
         flip_to_single_voice(root, hidden_notes)
 
     tree.write(args.output, encoding="utf-8", xml_declaration=True)
     print(f"Changed {changed} hidden-voice notes. "
-          f"Forced natural on visible voice. "
           f"Flipped: {bool(args.flip_to_single_voice)}. "
           f"Wrote {args.output}")
 
