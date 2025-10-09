@@ -2047,25 +2047,23 @@
     <duration>1024</duration>
    </backup>
    <note default-x="75">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>2</voice>
     <type>whole</type>
     <staff>2</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
   </measure>
   
   <measure number="2">
    <attributes />
    <note default-x="15">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>1</voice>
     <type>whole</type>
     <staff>1</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
    <barline>
     <bar-style>light-heavy</bar-style>
    </barline>
@@ -2089,36 +2087,33 @@
     <staff-details number="2" print-object="no" />
    </attributes>
    <note default-x="57">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>1</voice>
     <type>whole</type>
     <staff>1</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
    <backup>
     <duration>1024</duration>
    </backup>
    <note default-x="57">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>2</voice>
     <type>whole</type>
     <staff>2</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
   </measure>
   
   <measure number="3">
    <attributes />
    <note default-x="15">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>1</voice>
     <type>whole</type>
     <staff>1</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
    <barline>
     <bar-style>light-heavy</bar-style>
    </barline>
@@ -2142,36 +2137,33 @@
     <staff-details number="2" print-object="no" />
    </attributes>
    <note default-x="57">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>1</voice>
     <type>whole</type>
     <staff>1</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
    <backup>
     <duration>1024</duration>
    </backup>
    <note default-x="57">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>2</voice>
     <type>whole</type>
     <staff>2</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
   </measure>
   
   <measure number="4">
    <attributes />
    <note default-x="15">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>1</voice>
     <type>whole</type>
     <staff>1</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
    <barline>
     <bar-style>light-heavy</bar-style>
    </barline>
@@ -2206,13 +2198,12 @@
     <duration>1024</duration>
    </backup>
    <note default-x="57">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>2</voice>
     <type>whole</type>
     <staff>2</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
   </measure>
   
   <measure number="5">
@@ -2232,13 +2223,12 @@
     <duration>1024</duration>
    </backup>
    <note default-x="15">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>2</voice>
     <type>whole</type>
     <staff>2</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
   </measure>
   
   <measure number="5">
@@ -2271,13 +2261,12 @@
   <measure number="6">
    <attributes />
    <note default-x="15">
-    <rest />
     <duration>1024</duration>
     <instrument id="P1-I1" />
     <voice>1</voice>
     <type>whole</type>
     <staff>1</staff>
-   </note>
+   <pitch><step>G</step><octave>4</octave></pitch></note>
    <barline>
     <bar-style>light-heavy</bar-style>
    </barline>
@@ -2334,7 +2323,7 @@
     <pitch>
      <step>E</step>
      <octave>4</octave>
-    <alter>1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2357,7 +2346,7 @@
    <note color="#000000" default-x="207">
     <pitch>
      <step>G</step>
-     <alter>-1</alter>
+     <alter>1</alter>
      <octave>4</octave>
     </pitch>
     <duration>1024</duration>
@@ -2483,7 +2472,7 @@
     <pitch>
      <step>G</step>
      <octave>4</octave>
-    <alter>1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2507,7 +2496,7 @@
     <pitch>
      <step>E</step>
      <octave>4</octave>
-    <alter>-1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2536,7 +2525,7 @@
     <pitch>
      <step>E</step>
      <octave>4</octave>
-    <alter>-1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2557,6 +2546,7 @@
    <note color="#000000" default-x="193">
     <pitch>
      <step>G</step>
+     <alter>-1</alter>
      <octave>4</octave>
     </pitch>
     <duration>1024</duration>
@@ -2679,7 +2669,7 @@
    <note color="#000000" default-x="876">
     <pitch>
      <step>G</step>
-     <alter>1</alter>
+     <alter>-1</alter>
      <octave>4</octave>
     </pitch>
     <duration>1024</duration>
@@ -2703,7 +2693,7 @@
     <pitch>
      <step>E</step>
      <octave>4</octave>
-    <alter>-1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2756,7 +2746,7 @@
     <pitch>
      <step>G</step>
      <octave>4</octave>
-    <alter>-1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2876,7 +2866,7 @@
     <pitch>
      <step>G</step>
      <octave>4</octave>
-    <alter>1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2928,7 +2918,7 @@
     <pitch>
      <step>E</step>
      <octave>4</octave>
-    <alter>-1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -2949,6 +2939,7 @@
    <note color="#000000" default-x="192">
     <pitch>
      <step>G</step>
+     <alter>-1</alter>
      <octave>4</octave>
     </pitch>
     <duration>1024</duration>
@@ -3012,7 +3003,7 @@
     <pitch>
      <step>E</step>
      <octave>5</octave>
-    <alter>-1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -3073,6 +3064,7 @@
    <note color="#000000" default-x="877">
     <pitch>
      <step>G</step>
+     <alter>-1</alter>
      <octave>4</octave>
     </pitch>
     <duration>1024</duration>
@@ -3126,7 +3118,7 @@
     <pitch>
      <step>E</step>
      <octave>4</octave>
-    <alter>-1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -3149,7 +3141,7 @@
    <note color="#000000" default-x="189">
     <pitch>
      <step>G</step>
-     <alter>-1</alter>
+     <alter>1</alter>
      <octave>4</octave>
     </pitch>
     <duration>1024</duration>
@@ -3213,7 +3205,7 @@
     <pitch>
      <step>E</step>
      <octave>5</octave>
-    <alter>1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>
@@ -3272,7 +3264,7 @@
    <note color="#000000" default-x="835">
     <pitch>
      <step>G</step>
-     <alter>1</alter>
+     <alter>-1</alter>
      <octave>4</octave>
     </pitch>
     <duration>1024</duration>
@@ -3298,7 +3290,7 @@
     <pitch>
      <step>E</step>
      <octave>4</octave>
-    <alter>1</alter></pitch>
+    </pitch>
     <duration>1024</duration>
     <instrument id="P3-I1" />
     <voice>1</voice>

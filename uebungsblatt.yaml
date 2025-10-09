@@ -1,0 +1,25 @@
+
+# Minimal Übungsblatt configuration
+input: sibelius/Hoeren_1.musicxml
+outdir: OUT
+seed: 42
+what: all  # all | scales | intervals | chords | rhythms
+
+scales:
+  section: Tonleiter
+  placeholders: [E4, E5, G4]   # select which note letter+octaves to randomize
+  accidentals: [sharp, flat, natural]
+
+intervals:
+  section: Intervalle
+  set: [m2, M2, m3, M3, P4, TT, P5, m6, M6, m7, M7, P8]
+  direction: both   # up | down | both
+
+chords:
+  section: Akkord   # or Dreiklang
+  triads: [maj, min, dim]
+  inversion: random # root | first | second | random
+
+rhythms:
+  section: Rhythmus
+  note_prob: 0.7
