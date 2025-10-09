@@ -4,7 +4,7 @@ seed: 42
 what: all
 
 inputs:
-  scales: sibelius/Hoeren_scales.musicxml
+  scales: sibelius/Hoeren_scales_silent.musicxml
   intervals: sibelius/Hoeren_intervals.musicxml
   chords: sibelius/Hoeren_chords.musicxml
   rhythms: sibelius/Hoeren_rhythm.musicxml

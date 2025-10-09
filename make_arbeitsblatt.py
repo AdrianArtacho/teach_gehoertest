@@ -5,26 +5,55 @@ import argparse, xml.etree.ElementTree as ET
 def save(tree, path):
     tree.write(path, encoding="utf-8", xml_declaration=True)
 
+
+def _deepcopy(el):
+    import xml.etree.ElementTree as ET
+    x = ET.Element(el.tag, el.attrib)
+    x.text = el.text
+    for c in el:
+        x.append(_deepcopy(c))
+    return x
+
 def _staff_num(note):
     s = note.findtext("staff")
     return int(s) if s and s.isdigit() else None
 
 # ---------------- Scales ----------------
-def scales_hide(root):
-    changed=0
-    for note in root.findall(".//note"):
-        p = note.find("pitch")
-        if p is not None:
-            alt = p.find("alter")
-            if alt is not None:
-                p.remove(alt); changed+=1
-        acc = note.find("accidental")
-        if acc is not None:
-            note.remove(acc); changed+=1
-    return changed
 
+
+def scales_hide(root):
+    # Create a second voice for playback (hidden), and naturalize visible voice (silent)
+    import xml.etree.ElementTree as ET
+    changed=0
+    for part in root.findall("part"):
+        for meas in part.findall("measure"):
+            notes = list(meas.findall("note"))
+            for note in notes:
+                p = note.find("pitch")
+                if p is None:
+                    continue
+                hidden_note = _deepcopy(note)
+                v_vis = note.find("voice")
+                if v_vis is None: v_vis = ET.SubElement(note, "voice")
+                v_vis.text = "1"
+                v_hid = hidden_note.find("voice")
+                if v_hid is None: v_hid = ET.SubElement(hidden_note, "voice")
+                v_hid.text = "2"
+                hidden_note.set("print-object","no")
+                idx = list(meas).index(note)
+                meas.insert(idx+1, hidden_note)
+
+                # Naturalize visible
+                alt = p.find("alter")
+                if alt is not None:
+                    alt.text = "0"
+                for acc in list(note.findall("accidental")):
+                    note.remove(acc)
+                # Mute visible
+                note.attrib["dynamics"] = "0"
+                changed += 1
+    return changed
 def scales_delete(root):
-    # same effect as hide for scales
     return scales_hide(root)
 
 # ---------------- Intervals ----------------
@@ -87,11 +116,10 @@ def chords_delete(root):
 
 # ---------------- Rhythms ----------------
 def _strip_visual_children(note):
-    # Remove beams, flags, stems, noteheads, ties/tieds, notations, and accidentals/dots for safety
+    # Remove beams, flags, stems, noteheads, ties, accidentals, dots, and full <notations> blocks
     for tag in ["beam","flag","stem","notehead","accidental","dot"]:
         for el in list(note.findall(tag)):
             note.remove(el)
-    # Remove ties
     for el in list(note.findall("tie")):
         note.remove(el)
     notations = note.find("notations")
@@ -99,14 +127,25 @@ def _strip_visual_children(note):
         note.remove(notations)
 
 def rhythms_hide(root):
-    # Hide all notes AND their visual connectors (beams, stems, flags, etc.).
-    hidden=0
-    for note in root.findall(".//note"):
-        if note.find("pitch") is not None:
-            note.set("print-object","no")
-            _strip_visual_children(note)
-            hidden+=1
-    return hidden
+    # Hide pitched notes (no drawing) and replace rests with <forward> so nothing displays.
+    changed=0
+    for part in root.findall("part"):
+        for meas in part.findall("measure"):
+            for note in list(meas.findall("note")):
+                if note.find("rest") is not None:
+                    dur_el = note.find("duration")
+                    fwd = ET.Element("forward")
+                    if dur_el is not None:
+                        d = ET.SubElement(fwd, "duration"); d.text = dur_el.text
+                    idx = list(meas).index(note)
+                    meas.insert(idx, fwd)
+                    meas.remove(note)
+                    changed += 1
+                elif note.find("pitch") is not None:
+                    note.set("print-object","no")
+                    _strip_visual_children(note)
+                    changed += 1
+    return changed
 
 def rhythms_delete(root):
     # Convert all pitched notes to rests (preserve duration), and strip visual children.
