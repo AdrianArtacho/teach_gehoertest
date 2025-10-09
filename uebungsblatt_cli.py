@@ -1,6 +1,6 @@
 
 #!/usr/bin/env python3
-import argparse, sys, re
+import argparse, sys
 from pathlib import Path
 import subprocess
 
@@ -14,171 +14,174 @@ def run(cmd):
         print(res.stderr, file=sys.stderr)
         sys.exit(res.returncode)
 
-def parse_scalar(val):
-    v = val.strip()
+def parse_scalar(v):
+    v=v.strip()
     if v.startswith(("'", '"')) and v.endswith(("'", '"')) and len(v)>=2:
         return v[1:-1]
     if v.lower() in ("true","false"): return v.lower()=="true"
-    # int/float
     try:
         if "." in v: return float(v)
         return int(v)
-    except:
-        pass
-    # list in [a,b,c] form
+    except: pass
     if v.startswith("[") and v.endswith("]"):
-        inner = v[1:-1].strip()
-        if not inner:
-            return []
-        parts = [p.strip() for p in inner.split(",")]
-        return [parse_scalar(p) for p in parts]
+        inner=v[1:-1].strip()
+        if not inner: return []
+        return [parse_scalar(p.strip()) for p in inner.split(",") ]
     return v
 
 def parse_yaml_min(path: Path):
-    # Minimal YAML subset: maps + nested by 2-space indentation + [a,b] lists
     lines = path.read_text(encoding="utf-8").splitlines()
-    stack = [{}]
-    indents = [0]
+    root = {}
+    stack = [(0, root)]
+    last_keys = {id(root): None}
     for raw in lines:
         line = raw.split("#",1)[0].rstrip()
-        if not line.strip():
-            continue
+        if not line.strip(): continue
         indent = len(line) - len(line.lstrip(" "))
-        if indent % 2 != 0:
-            raise ValueError("Indentation must be multiples of 2 spaces")
-        keyval = line.strip()
-        if ":" in keyval:
-            key, rest = keyval.split(":", 1)
-            key = key.strip()
-            rest = rest.strip()
-            # adjust stack based on indent
-            while indent < indents[-1]:
-                stack.pop(); indents.pop()
-            if indent > indents[-1]:
-                # new child dict level
-                child = {}
-                # attach this child to previous key? Only if last item was a key with empty value
-                # But since we hit a new key at deeper indent, we assume previous line created the parent.
-                # To handle typical YAML, we need to attach to last inserted key of the current dict.
-                # We'll track last_key on each dict via a hidden key "__last_key__".
-                raise ValueError("Malformed YAML: unexpected indentation. Ensure parent key has no value and is followed by indented keys.")
-            current = stack[-1]
-            if rest == "":
-                # key with nested mapping to follow
-                if key in current and isinstance(current[key], dict):
-                    # reuse
-                    pass
-                else:
-                    current[key] = {}
-                stack.append(current[key]); indents.append(indent+2)
-            else:
-                current[key] = parse_scalar(rest)
-                current["__last_key__"] = key
+        if indent % 2 != 0: raise ValueError("Indentation must be multiples of 2 spaces")
+        key, sep, rest = line.strip().partition(":")
+        if not sep: raise ValueError("Expected ':' in line")
+        while stack and indent < stack[-1][0]:
+            stack.pop()
+        if indent > stack[-1][0]:
+            parent = stack[-1][1]
+            lk = last_keys.get(id(parent))
+            if lk is None:
+                raise ValueError("Malformed YAML: unexpected indentation")
+            child = {}
+            parent[lk] = child
+            stack.append((indent, child))
+            last_keys[id(child)] = None
+        current = stack[-1][1]
+        if rest.strip()=="":
+            current[key] = current.get(key, {})
+            last_keys[id(current)] = key
         else:
-            raise ValueError("Line must contain ':' separating key and value")
-    # cleanup helper keys
-    def cleanup(d):
-        if isinstance(d, dict):
-            d.pop("__last_key__", None)
-            for k in list(d.keys()):
-                d[k] = cleanup(d[k])
-        elif isinstance(d, list):
-            return [cleanup(x) for x in d]
-        return d
-    return cleanup(stack[0])
+            current[key] = parse_scalar(rest)
+            last_keys[id(current)] = key
+    return root
 
-def load_config(path: Path):
-    data = parse_yaml_min(path)
+def deep_merge(base, override):
+    if isinstance(base, dict) and isinstance(override, dict):
+        out = dict(base)
+        for k,v in override.items():
+            out[k] = deep_merge(base.get(k), v) if k in base else v
+        return out
+    return override
+
+def load_config(path: Path, profile: str=None):
+    d = parse_yaml_min(path)
     cfg = {
-        "input": data.get("input", "sibelius/Hoeren_1.musicxml"),
-        "outdir": data.get("outdir", "OUT"),
-        "seed": data.get("seed", 42),
+        "inputs": {
+            "scales": d.get("inputs", {}).get("scales", "sibelius/Hoeren_scales.musicxml"),
+            "intervals": d.get("inputs", {}).get("intervals", "sibelius/Hoeren_intervals.musicxml"),
+            "chords": d.get("inputs", {}).get("chords", "sibelius/Hoeren_chords.musicxml"),
+            "rhythms": d.get("inputs", {}).get("rhythms", "sibelius/Hoeren_rhythm.musicxml"),
+        },
+        "outdir": d.get("outdir", "OUT"),
+        "seed": d.get("seed", 42),
+        "what": d.get("what", "all"),
         "scales": {
-            "section": data.get("scales", {}).get("section", "Tonleiter"),
-            "accidentals": ",".join(data.get("scales", {}).get("accidentals", ["sharp","flat","natural"])) if isinstance(data.get("scales", {}).get("accidentals"), list) else data.get("scales", {}).get("accidentals", "sharp,flat,natural"),
-            "placeholders": ",".join(data.get("scales", {}).get("placeholders", ["E4","E5"])) if isinstance(data.get("scales", {}).get("placeholders"), list) else data.get("scales", {}).get("placeholders", "E4,E5"),
+            "accidentals": ",".join(d.get("scales", {}).get("accidentals", ["sharp","flat","natural"])) if isinstance(d.get("scales", {}).get("accidentals"), list) else d.get("scales", {}).get("accidentals", "sharp,flat,natural"),
+            "placeholders": ",".join(d.get("scales", {}).get("placeholders", ["E4","E5"])) if isinstance(d.get("scales", {}).get("placeholders"), list) else d.get("scales", {}).get("placeholders", "E4,E5"),
         },
         "intervals": {
-            "section": data.get("intervals", {}).get("section", "Intervalle"),
-            "intervals": ",".join(data.get("intervals", {}).get("set", ["m2","M2","m3","M3","P4","TT","P5","m6","M6","m7","M7","P8"])) if isinstance(data.get("intervals", {}).get("set"), list) else data.get("intervals", {}).get("set", "m2,M2,m3,M3,P4,TT,P5,m6,M6,m7,M7,P8"),
-            "direction": data.get("intervals", {}).get("direction", "both"),
+            "intervals": ",".join(d.get("intervals", {}).get("set", ["m2","M2","m3","M3","P4","TT","P5","m6","M6","m7","M7","P8"])) if isinstance(d.get("intervals", {}).get("set"), list) else d.get("intervals", {}).get("set", "m2,M2,m3,M3,P4,TT,P5,m6,M6,m7,M7,P8"),
+            "direction": d.get("intervals", {}).get("direction", "both"),
         },
         "chords": {
-            "section": data.get("chords", {}).get("section", "Akkord"),
-            "triads": ",".join(data.get("chords", {}).get("triads", ["maj","min","dim"])) if isinstance(data.get("chords", {}).get("triads"), list) else data.get("chords", {}).get("triads", "maj,min,dim"),
-            "inversion": data.get("chords", {}).get("inversion", "random"),
+            "triads": ",".join(d.get("chords", {}).get("triads", ["maj","min","dim"])) if isinstance(d.get("chords", {}).get("triads"), list) else d.get("chords", {}).get("triads", "maj,min,dim"),
+            "inversion": d.get("chords", {}).get("inversion", "random"),
         },
         "rhythms": {
-            "section": data.get("rhythms", {}).get("section", "Rhythmus"),
-            "note_prob": data.get("rhythms", {}).get("note_prob", 0.7),
+            "note_prob": d.get("rhythms", {}).get("note_prob", 0.7),
         },
-        "what": data.get("what", "all"),
+        "profiles": d.get("profiles", {}),
+        "worksheet": {
+            "scales": d.get("worksheet", {}).get("scales", "hide"),
+            "intervals": d.get("worksheet", {}).get("intervals", "hide"),
+            "chords": d.get("worksheet", {}).get("chords", "hide"),
+            "rhythms": d.get("worksheet", {}).get("rhythms", "hide"),
+        },
     }
+    if profile:
+        prof = cfg["profiles"].get(profile)
+        if prof:
+            cfg = deep_merge(cfg, prof)
     return cfg
 
 def main():
-    ap = argparse.ArgumentParser(description="Übungsblatt CLI (with YAML config)")
-    ap.add_argument("--config", help="Path to YAML config")
-    # Allow overrides from CLI (optional)
-    ap.add_argument("--input"); ap.add_argument("--outdir"); ap.add_argument("--seed", type=int)
+    ap = argparse.ArgumentParser(description="Übungsblatt CLI (per-section inputs + profiles)")
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--profile")
+    ap.add_argument("--outdir"); ap.add_argument("--seed", type=int)
     args = ap.parse_args()
 
-    if args.config:
-        cfg = load_config(Path(args.config))
-    else:
-        # fallback minimal defaults
-        cfg = {
-            "input": "sibelius/Hoeren_1.musicxml",
-            "outdir": "OUT",
-            "seed": 42,
-            "scales": {"section":"Tonleiter","accidentals":"sharp,flat,natural","placeholders":"E4,E5"},
-            "intervals": {"section":"Intervalle","intervals":"m2,M2,m3,M3,P4,TT,P5,m6,M6,m7,M7,P8","direction":"both"},
-            "chords": {"section":"Akkord","triads":"maj,min,dim","inversion":"random"},
-            "rhythms": {"section":"Rhythmus","note_prob":0.7},
-            "what": "all",
-        }
-
-    # CLI overrides
-    if args.input: cfg["input"] = args.input
+    cfg = load_config(Path(args.config), args.profile)
     if args.outdir: cfg["outdir"] = args.outdir
     if args.seed is not None: cfg["seed"] = args.seed
 
-    inp = Path(cfg["input"]).resolve()
     outdir = Path(cfg["outdir"]).resolve(); outdir.mkdir(parents=True, exist_ok=True)
     seed = int(cfg["seed"])
+
+    def p(rel): return str(Path(rel).resolve())
 
     what = cfg.get("what","all")
     if what in ("all","scales"):
         run([sys.executable, HERE / "generate_scales.py",
-             "--input", inp, "--output", outdir / "Hoeren_1_scales.musicxml",
-             "--section-keyword", cfg["scales"]["section"],
+             "--input", p(cfg["inputs"]["scales"]),
+             "--output", outdir / "Hoeren_scales.musicxml",
              "--accidentals", cfg["scales"]["accidentals"],
              "--placeholders", cfg["scales"]["placeholders"],
              "--seed", seed + 1])
 
     if what in ("all","intervals"):
         run([sys.executable, HERE / "generate_intervals.py",
-             "--input", inp, "--output", outdir / "Hoeren_1_intervals.musicxml",
-             "--section-keyword", cfg["intervals"]["section"],
+             "--input", p(cfg["inputs"]["intervals"]),
+             "--output", outdir / "Hoeren_intervals.musicxml",
              "--intervals", cfg["intervals"]["intervals"],
              "--direction", cfg["intervals"]["direction"],
              "--seed", seed + 2])
 
     if what in ("all","chords"):
         run([sys.executable, HERE / "generate_chords.py",
-             "--input", inp, "--output", outdir / "Hoeren_1_chords.musicxml",
-             "--section-keyword", cfg["chords"]["section"],
+             "--input", p(cfg["inputs"]["chords"]),
+             "--output", outdir / "Hoeren_chords.musicxml",
              "--triads", cfg["chords"]["triads"],
              "--inversion", cfg["chords"]["inversion"],
              "--seed", seed + 3])
 
     if what in ("all","rhythms"):
         run([sys.executable, HERE / "generate_rhythms.py",
-             "--input", inp, "--output", outdir / "Hoeren_1_rhythms.musicxml",
-             "--section-keyword", cfg["rhythms"]["section"],
+             "--input", p(cfg["inputs"]["rhythms"]),
+             "--output", outdir / "Hoeren_rhythm.musicxml",
              "--note-prob", cfg["rhythms"]["note_prob"],
              "--seed", seed + 4])
 
+        # Also produce Arbeitsblatt variants
+    ws = HERE / "make_arbeitsblatt.py"
+    # scales
+    if what in ("all","scales"):
+        run([sys.executable, ws, "--mode", "scales", "--input", outdir / "Hoeren_scales.musicxml", "--output", outdir / "Hoeren_scales_arbeitsblatt.musicxml"])
+    # intervals
+    if what in ("all","intervals"):
+        run([sys.executable, ws, "--mode", "intervals", "--input", outdir / "Hoeren_intervals.musicxml", "--output", outdir / "Hoeren_intervals_arbeitsblatt.musicxml"])
+    # chords
+    if what in ("all","chords"):
+        run([sys.executable, ws, "--mode", "chords", "--input", outdir / "Hoeren_chords.musicxml", "--output", outdir / "Hoeren_chords_arbeitsblatt.musicxml"])
+    # rhythms
+    if what in ("all","rhythms"):
+        run([sys.executable, ws, "--mode", "rhythms", "--input", outdir / "Hoeren_rhythm.musicxml", "--output", outdir / "Hoeren_rhythm_arbeitsblatt.musicxml"])
+        # Also produce Arbeitsblatt variants with configured actions
+    ws = HERE / "make_arbeitsblatt.py"
+    if what in ("all","scales"):
+        run([sys.executable, ws, "--mode", "scales", "--action", cfg["worksheet"]["scales"], "--input", outdir / "Hoeren_scales.musicxml", "--output", outdir / "Hoeren_scales_arbeitsblatt.musicxml"])
+    if what in ("all","intervals"):
+        run([sys.executable, ws, "--mode", "intervals", "--action", cfg["worksheet"]["intervals"], "--input", outdir / "Hoeren_intervals.musicxml", "--output", outdir / "Hoeren_intervals_arbeitsblatt.musicxml"])
+    if what in ("all","chords"):
+        run([sys.executable, ws, "--mode", "chords", "--action", cfg["worksheet"]["chords"], "--input", outdir / "Hoeren_chords.musicxml", "--output", outdir / "Hoeren_chords_arbeitsblatt.musicxml"])
+    if what in ("all","rhythms"):
+        run([sys.executable, ws, "--mode", "rhythms", "--action", cfg["worksheet"]["rhythms"], "--input", outdir / "Hoeren_rhythm.musicxml", "--output", outdir / "Hoeren_rhythm_arbeitsblatt.musicxml"])
     print(f"Done. Files saved to {outdir}")
 
 if __name__ == "__main__":
