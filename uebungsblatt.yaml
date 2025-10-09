@@ -4,7 +4,7 @@ seed: 42
 what: all
 
 inputs:
-  scales: sibelius/Hoeren_scales_silent.musicxml
+  scales: sibelius/Hoeren_scales.musicxml
   intervals: sibelius/Hoeren_intervals.musicxml
   chords: sibelius/Hoeren_chords.musicxml
   rhythms: sibelius/Hoeren_rhythm.musicxml
@@ -24,47 +24,9 @@ chords:
 rhythms:
   note_prob: 0.7
 
-profiles:
-  easy:
-    seed: 11
-    scales:
-      accidentals: [natural]
-    intervals:
-      set: [M2, m3, P4, P5]
-      direction: up
-    chords:
-      triads: [maj, min]
-      inversion: root
-    rhythms:
-      note_prob: 0.85
-
-  exam:
-    seed: 99
-    scales:
-      placeholders: [E4, E5, G4, A4]
-      accidentals: [sharp, flat, natural]
-    intervals:
-      set: [m2, M2, m3, M3, P4, TT, P5, m6, M6, m7, M7, P8]
-      direction: both
-    chords:
-      triads: [maj, min, dim, aug]
-      inversion: random
-    rhythms:
-      note_prob: 0.6
-
-
-# Worksheet/Arbeitsblatt concealment mode per page (hide|delete)
+# Arbeitsblatt concealment defaults
 worksheet:
   scales: hide
   intervals: hide
   chords: hide
   rhythms: hide
-
-# Example profile toggling deletions:
-profiles:
-  delete_solutions:
-    worksheet:
-      scales: hide       # same as normal for scales
-      intervals: delete  # remove quarter notes
-      chords: delete     # remove chord tones
-      rhythms: delete    # convert all notes to rests

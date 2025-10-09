@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import argparse
 import xml.etree.ElementTree as ET
@@ -5,52 +6,43 @@ import xml.etree.ElementTree as ET
 def save(tree, path):
     tree.write(path, encoding="utf-8", xml_declaration=True)
 
-# ---------------- Scales ----------------
+# ----- Scales: hide *all* accidentals (keep playback) -----
 def scales_hide(root):
-    """
-    Arbeitsblatt (scales):
-      - Visible voice: force natural (alter=0) AND remove any accidental glyphs/courtesy signs.
-      - Hidden voice: ensure it remains hidden (print-object="no").
-    """
+    """Make all accidentals invisible. If a pitch has <alter> but no <accidental>, add an invisible one."""
+    def accidental_text_from_alter(alt):
+        try:
+            a = int(float(str(alt).strip()))
+        except Exception:
+            return None
+        return {-2:"flat-flat", -1:"flat", 0:"natural", 1:"sharp", 2:"sharp-sharp"}.get(a)
+
     changed = 0
     for note in root.findall(".//note"):
-        is_hidden = (note.get("print-object") == "no")
-        p = note.find("pitch")
-
-        if is_hidden:
-            # make sure the playback voice stays hidden
-            if note.get("print-object") != "no":
-                note.set("print-object", "no")
-            continue
-
-        # Visible voice: force natural pitch spelling (no alterations) and strip glyphs
-        if p is not None:
-            alt_el = p.find("alter")
-            if alt_el is None:
-                alt_el = ET.SubElement(p, "alter")
-            if alt_el.text != "0":
-                alt_el.text = "0"
-                changed += 1
-
-        # remove any printed accidental glyph (incl. courtesy naturals)
+        had = False
         for acc in list(note.findall("accidental")):
-            note.remove(acc)
-            changed += 1
-
+            acc.set("print-object", "no"); had = True; changed += 1
+        if not had:
+            p = note.find("pitch")
+            if p is not None:
+                alt = p.find("alter")
+                if alt is not None and (alt.text or "").strip() != "":
+                    txt = accidental_text_from_alter(alt.text)
+                    if txt is not None and txt != "natural":
+                        acc = ET.SubElement(note, "accidental", {"print-object": "no"})
+                        acc.text = txt; changed += 1
     return changed
 
 def scales_delete(root):
-    # For scales, deleting isn't meaningful; behave same as hide.
+    # Not meaningful; behave same as hide.
     return scales_hide(root)
 
-# ---------------- Intervals ----------------
+# ----- Intervals -----
 def intervals_hide(root):
     hidden = 0
     for note in root.findall(".//note"):
         typ = (note.findtext("type") or "").strip().lower()
         if typ == "quarter":
-            note.set("print-object", "no")
-            hidden += 1
+            note.set("print-object", "no"); hidden += 1
     return hidden
 
 def intervals_delete(root):
@@ -60,35 +52,30 @@ def intervals_delete(root):
             for note in list(meas.findall("note")):
                 typ = (note.findtext("type") or "").strip().lower()
                 if typ == "quarter":
-                    meas.remove(note)
-                    removed += 1
+                    meas.remove(note); removed += 1
     return removed
 
-# ---------------- Chords ----------------
+# ----- Chords -----
 def _staff_num(note):
     s = note.findtext("staff")
     return int(s) if s and s.isdigit() else None
 
 def chords_hide(root):
-    saw_staff = False
-    hidden = 0
+    saw_staff = False; hidden = 0
     for note in root.findall(".//note"):
         sn = _staff_num(note)
         if sn is not None:
             saw_staff = True
             if sn == 1:
-                note.set("print-object", "no")
-                hidden += 1
+                note.set("print-object", "no"); hidden += 1
     if not saw_staff:
         for note in root.findall(".//note"):
             if note.find("chord") is not None:
-                note.set("print-object", "no")
-                hidden += 1
+                note.set("print-object", "no"); hidden += 1
     return hidden
 
 def chords_delete(root):
-    saw_staff = False
-    removed = 0
+    saw_staff = False; removed = 0
     for part in root.findall("part"):
         for meas in part.findall("measure"):
             for note in list(meas.findall("note")):
@@ -96,20 +83,18 @@ def chords_delete(root):
                 if sn is not None:
                     saw_staff = True
                     if sn == 1:
-                        meas.remove(note)
-                        removed += 1
+                        meas.remove(note); removed += 1
     if not saw_staff:
         for part in root.findall("part"):
             for meas in part.findall("measure"):
                 for note in list(meas.findall("note")):
                     if note.find("chord") is not None:
-                        meas.remove(note)
-                        removed += 1
+                        meas.remove(note); removed += 1
     return removed
 
-# ---------------- Rhythms ----------------
+# ----- Rhythms -----
 def _strip_visual_children(note):
-    for tag in ["beam", "flag", "stem", "notehead", "accidental", "dot"]:
+    for tag in ["beam","flag","stem","notehead","accidental","dot"]:
         for el in list(note.findall(tag)):
             note.remove(el)
     for el in list(note.findall("tie")):
@@ -127,16 +112,11 @@ def rhythms_hide(root):
                     dur_el = note.find("duration")
                     fwd = ET.Element("forward")
                     if dur_el is not None:
-                        d = ET.SubElement(fwd, "duration")
-                        d.text = dur_el.text
+                        d = ET.SubElement(fwd, "duration"); d.text = dur_el.text
                     idx = list(meas).index(note)
-                    meas.insert(idx, fwd)
-                    meas.remove(note)
-                    changed += 1
+                    meas.insert(idx, fwd); meas.remove(note); changed += 1
                 elif note.find("pitch") is not None:
-                    note.set("print-object", "no")
-                    _strip_visual_children(note)
-                    changed += 1
+                    note.set("print-object","no"); _strip_visual_children(note); changed += 1
     return changed
 
 def rhythms_delete(root):
@@ -147,32 +127,26 @@ def rhythms_delete(root):
             note.remove(p)
             if note.find("rest") is None:
                 ET.SubElement(note, "rest")
-            _strip_visual_children(note)
-            changed += 1
+            _strip_visual_children(note); changed += 1
     return changed
 
-# ---------------- Dispatch ----------------
+# ----- Dispatch -----
 def apply_mode(root, page, action):
-    if page == "scales":
-        return (scales_hide if action == "hide" else scales_delete)(root)
-    if page == "intervals":
-        return (intervals_hide if action == "hide" else intervals_delete)(root)
-    if page == "chords":
-        return (chords_hide if action == "hide" else chords_delete)(root)
-    if page == "rhythms":
-        return (rhythms_hide if action == "hide" else rhythms_delete)(root)
-    raise ValueError("unknown page")
+    if page == "scales": return (scales_hide if action=="hide" else scales_delete)(root)
+    if page == "intervals": return (intervals_hide if action=="hide" else intervals_delete)(root)
+    if page == "chords": return (chords_hide if action=="hide" else chords_delete)(root)
+    if page == "rhythms": return (rhythms_hide if action=="hide" else rhythms_delete)(root)
+    raise ValueError("unknown page" )
 
 def main():
-    ap = argparse.ArgumentParser(description="Create worksheet/Arbeitsblatt variants (hide or delete).")
-    ap.add_argument("--mode", required=True, choices=["scales", "intervals", "chords", "rhythms"], help="Which page type")
-    ap.add_argument("--action", default="hide", choices=["hide", "delete"], help="hide or delete solutions")
-    ap.add_argument("--input", required=True, help="Source MusicXML")
-    ap.add_argument("--output", required=True, help="Destination MusicXML")
+    ap = argparse.ArgumentParser(description="Create worksheet/Arbeitsblatt variants (hide or delete)." )
+    ap.add_argument("--mode", required=True, choices=["scales","intervals","chords","rhythms"])
+    ap.add_argument("--action", default="hide", choices=["hide","delete"])
+    ap.add_argument("--input", required=True)
+    ap.add_argument("--output", required=True)
     args = ap.parse_args()
 
-    tree = ET.parse(args.input)
-    root = tree.getroot()
+    tree = ET.parse(args.input); root = tree.getroot()
     n = apply_mode(root, args.mode, args.action)
     save(tree, args.output)
     print(f"Arbeitsblatt ({args.mode}, {args.action}): changed {n} elements. Wrote {args.output}")

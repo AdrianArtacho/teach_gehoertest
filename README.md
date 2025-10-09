@@ -20,6 +20,14 @@ python3 -m venv ./.venv
 source .venv/bin/activate
 ```
 
+## Run all in one command
+
+```bash
+python uebungsblatt_cli.py --config uebungsblatt.yaml
+```
+
+## Specific commands
+
 ```bash
 # 1) Scales: randomize accidentals of E4 / E5 placeholders in the “Tonleiter” section
 python generate_scales.py --input sibelius/Hoeren_1.musicxml --output out_scales.musicxml --accidentals sharp,flat,natural --seed 42
