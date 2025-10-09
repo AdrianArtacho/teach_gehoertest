@@ -50,3 +50,10 @@ Thumbs.db
 
 # venv
 .venv
+
+# folder structure
+OUT/*
+!OUT/.gitkeep
+
+sandbox/*
+sibelus/sandbox/*
