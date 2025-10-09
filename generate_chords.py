@@ -2,74 +2,31 @@
 #!/usr/bin/env python3
 import argparse, random, xml.etree.ElementTree as ET
 from musicxml_utils import get_measures_for_section, first_n_notes_in_measure, note_pitch, set_note_pitch, pitch_to_midi, midi_to_pitch, clone_note_as_chord_tone, write_tree
-
-TRIADS = {
-    "maj": [0,4,7],
-    "min": [0,3,7],
-    "dim": [0,3,6],
-    "aug": [0,4,8]
-}
-
+TRIADS={"maj":[0,4,7],"min":[0,3,7],"dim":[0,3,6],"aug":[0,4,8]}
 def main():
-    ap = argparse.ArgumentParser(description="Turn single notes into stacked triads in the chords section.")
-    ap.add_argument("--input", required=True)
-    ap.add_argument("--output", required=True)
-    ap.add_argument("--section-keyword", default="Akkord", help="Keyword that marks the chords section (e.g., 'Akkord' or 'Dreiklang')")
-    ap.add_argument("--triads", default="maj,min,dim", help="Comma list among: maj,min,dim,aug")
-    ap.add_argument("--inversion", default="root", choices=["root","first","second","random"], help="Inversion for the triad")
-    ap.add_argument("--seed", type=int, default=None)
-    args = ap.parse_args()
-    if args.seed is not None:
-        random.seed(args.seed)
-
-    allowed = [t.strip() for t in args.triads.split(",") if t.strip() in TRIADS]
-    if not allowed:
-        allowed = ["maj","min"]
-
-    tree = ET.parse(args.input)
-    root = tree.getroot()
-
-    measures = get_measures_for_section(root, args.section_keyword)
-    changed = 0
+    ap=argparse.ArgumentParser()
+    ap.add_argument("--input", required=True); ap.add_argument("--output", required=True)
+    ap.add_argument("--section-keyword", default="Akkord")
+    ap.add_argument("--triads", default="maj,min,dim"); ap.add_argument("--inversion", default="random", choices=["root","first","second","random"])
+    ap.add_argument("--seed", type=int, default=None); args=ap.parse_args()
+    if args.seed is not None: random.seed(args.seed)
+    allowed=[t.strip() for t in args.triads.split(",") if t.strip() in TRIADS] or ["maj","min"]
+    tree=ET.parse(args.input); root=tree.getroot()
+    measures=get_measures_for_section(root, args.section_keyword); changed=0
     for meas in measures:
-        notes = first_n_notes_in_measure(meas, n=1)
-        if not notes:
-            continue
-        root_note = notes[0]
-        p = note_pitch(root_note)
-        if p is None:
-            continue
-        step, alter, octave = p
-        root_midi = pitch_to_midi(step, alter, octave)
-        triad_kind = random.choice(allowed)
-        intervals = TRIADS[triad_kind][:]
-        inv_choice = args.inversion
-        if inv_choice=="random":
-            inv_choice = random.choice(["root","first","second"])
-        if inv_choice=="first":
-            intervals = [intervals[1]-12, intervals[2]-12, intervals[0]]
-        elif inv_choice=="second":
-            intervals = [intervals[2]-12, intervals[0], intervals[1]]
-
-        # adjust root to interval[0]
-        set_note_pitch(root_note, *midi_to_pitch(root_midi + intervals[0]))
-        # add two chord tones
-        note_b = clone_note_as_chord_tone(root_note)
-        note_c = clone_note_as_chord_tone(root_note)
-        parent = meas
-        idx = list(parent).index(root_note)
-        parent.insert(idx+1, note_b)
-        parent.insert(idx+2, note_c)
-        from_midi = root_midi
-        # set their pitches
-        step_b, alt_b, oct_b = midi_to_pitch(from_midi + intervals[1])
-        step_c, alt_c, oct_c = midi_to_pitch(from_midi + intervals[2])
-        set_note_pitch(note_b, step_b, alt_b, oct_b)
-        set_note_pitch(note_c, step_c, alt_c, oct_c)
-        changed += 1
-
-    write_tree(tree, args.output)
-    print(f"Created/updated {changed} chords in section '{args.section_keyword}'. Wrote {args.output}")
-
-if __name__ == "__main__":
-    main()
+        notes=first_n_notes_in_measure(meas,1)
+        if not notes: continue
+        root_note=notes[0]; p=note_pitch(root_note)
+        if p is None: continue
+        step,alter,octave=p; base=pitch_to_midi(step,alter,octave)
+        kind=random.choice(allowed); ints=TRIADS[kind][:]
+        inv=args.inversion if args.inversion!="random" else random.choice(["root","first","second"])
+        if inv=="first": ints=[ints[1]-12, ints[2]-12, ints[0]]
+        elif inv=="second": ints=[ints[2]-12, ints[0], ints[1]]
+        s0,a0,o0=midi_to_pitch(base+ints[0]); set_note_pitch(root_note,s0,a0,o0)
+        nB=clone_note_as_chord_tone(root_note); nC=clone_note_as_chord_tone(root_note)
+        idx=list(meas).index(root_note); meas.insert(idx+1,nB); meas.insert(idx+2,nC)
+        s1,a1,o1=midi_to_pitch(base+ints[1]); s2,a2,o2=midi_to_pitch(base+ints[2])
+        set_note_pitch(nB,s1,a1,o1); set_note_pitch(nC,s2,a2,o2); changed+=1
+    write_tree(tree,args.output); print(f"Created/updated {changed} chords. Wrote {args.output}")
+if __name__=='__main__': main()
