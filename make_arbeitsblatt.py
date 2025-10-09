@@ -104,19 +104,29 @@ def _strip_visual_children(note):
         note.remove(notations)
 
 def rhythms_hide(root):
+    """
+    Render nothing in rhythm Arbeitsblatt:
+      - Remove all <backup> (no multi-voice rewinds).
+      - Replace every <note> with <forward> of equal duration (advances time, draws nothing).
+    """
     changed = 0
     for part in root.findall("part"):
         for meas in part.findall("measure"):
+            # Remove any voice rewinds to avoid corrupt timing
+            for b in list(meas.findall("backup")):
+                meas.remove(b)
+
+            # Replace notes with forward (same duration)
             for note in list(meas.findall("note")):
-                if note.find("rest") is not None:
-                    dur_el = note.find("duration")
-                    fwd = ET.Element("forward")
-                    if dur_el is not None:
-                        d = ET.SubElement(fwd, "duration"); d.text = dur_el.text
-                    idx = list(meas).index(note)
-                    meas.insert(idx, fwd); meas.remove(note); changed += 1
-                elif note.find("pitch") is not None:
-                    note.set("print-object","no"); _strip_visual_children(note); changed += 1
+                dur_el = note.find("duration")
+                fwd = ET.Element("forward")
+                d = ET.SubElement(fwd, "duration")
+                # Use the note's duration if present; fallback to '1'
+                d.text = (dur_el.text if dur_el is not None and (dur_el.text or "").strip() else "1")
+                idx = list(meas).index(note)
+                meas.insert(idx, fwd)
+                meas.remove(note)
+                changed += 1
     return changed
 
 def rhythms_delete(root):
