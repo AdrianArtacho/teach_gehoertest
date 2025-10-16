@@ -53,18 +53,30 @@ profiles:
       - natural
       position_tag: Up
       direction: both
+    scales:
+      alter_ratio: 0.3
+      accidental_tags:
+      - sharp
   EC2:
     intervals:
       accidental_tags:
       - natural
       position_tag: Down
       direction: both
+    scales:
+      alter_ratio: 0.6
+      accidental_tags:
+      - sharp
   EC3:
     intervals:
       accidental_tags:
       - natural
       position_tag: Auto
       direction: both
+    scales:
+      alter_ratio: 1.0
+      accidental_tags:
+      - sharp
   EC4:
     intervals:
       accidental_tags:

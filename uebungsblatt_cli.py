@@ -71,10 +71,16 @@ def main():
                "--input", scales_in, "--output", scales_out]
         s_cfg = cfg.get("scales", {})
         if isinstance(s_cfg, dict):
-            if "accidentals" in s_cfg:
+            if "accidental_tags" in s_cfg:
+                cmd += ["--accidental-tags", ",".join(s_cfg["accidental_tags"])]
+            elif "accidentals" in s_cfg:
                 cmd += ["--accidentals", ",".join(s_cfg["accidentals"])]
             if "placeholders" in s_cfg:
                 cmd += ["--placeholders", ",".join(s_cfg["placeholders"])]
+            if "alter_count" in s_cfg:
+                cmd += ["--alter-count", str(s_cfg["alter_count"])]
+            if "alter_ratio" in s_cfg:
+                cmd += ["--alter-ratio", str(s_cfg["alter_ratio"])]
         if seed is not None:
             cmd += ["--seed", str(seed)]
         run(cmd)
