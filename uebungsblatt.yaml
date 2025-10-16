@@ -1,32 +1,127 @@
-
 outdir: OUT
 seed: 42
 what: all
-
 inputs:
   scales: sibelius/Hoeren_scales.musicxml
   intervals: sibelius/Hoeren_intervals.musicxml
   chords: sibelius/Hoeren_chords.musicxml
   rhythms: sibelius/Hoeren_rhythm.musicxml
-
 scales:
-  placeholders: [E4, E5]
-  accidentals: [sharp, flat, natural]
-
+  placeholders:
+  - E4
+  - E5
+  accidentals:
+  - sharp
+  - flat
+  - natural
 intervals:
-  set: [m2, M2, m3, M3, P4, TT, P5, m6, M6, m7, M7, P8]
+  set:
+  - m2
+  - M2
+  - m3
+  - M3
+  - P4
+  - TT
+  - P5
+  - m6
+  - M6
+  - m7
+  - M7
+  - P8
   direction: both
-
+  accidental_tags:
+  - natural
+  - sharp
+  - flat
 chords:
-  triads: [maj, min, dim]
+  triads:
+  - maj
+  - min
+  - dim
   inversion: random
-
 rhythms:
   note_prob: 0.7
-
-# Arbeitsblatt concealment defaults
 worksheet:
   scales: hide
   intervals: hide
   chords: hide
   rhythms: hide
+profiles:
+  EC1:
+    intervals:
+      accidental_tags:
+      - natural
+      position_tag: Up
+      direction: both
+  EC2:
+    intervals:
+      accidental_tags:
+      - natural
+      position_tag: Down
+      direction: both
+  EC3:
+    intervals:
+      accidental_tags:
+      - natural
+      position_tag: Auto
+      direction: both
+  EC4:
+    intervals:
+      accidental_tags:
+      - sharp
+      position_tag: Up
+      direction: both
+  EC5:
+    intervals:
+      accidental_tags:
+      - sharp
+      position_tag: Down
+      direction: both
+  EC6:
+    intervals:
+      accidental_tags:
+      - sharp
+      position_tag: Auto
+      direction: both
+  EC7:
+    intervals:
+      accidental_tags:
+      - flat
+      position_tag: Up
+      direction: both
+  EC8:
+    intervals:
+      accidental_tags:
+      - flat
+      position_tag: Down
+      direction: both
+  EC9:
+    intervals:
+      accidental_tags:
+      - flat
+      position_tag: Auto
+      direction: both
+  EC10:
+    intervals:
+      accidental_tags:
+      - natural
+      - sharp
+      - flat
+      position_tag: Up
+      direction: both
+  EC11:
+    intervals:
+      accidental_tags:
+      - natural
+      - sharp
+      - flat
+      position_tag: Down
+      direction: both
+  EC12:
+    intervals:
+      accidental_tags:
+      - natural
+      - sharp
+      - flat
+      position_tag: Auto
+      direction: both
