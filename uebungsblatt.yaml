@@ -57,6 +57,9 @@ profiles:
       alter_ratio: 0.3
       accidental_tags:
       - sharp
+      # optional, these are the defaults:
+      # hide_articulations: true
+      #   (anchors/visibility behavior is in the generator defaults)
   EC2:
     intervals:
       accidental_tags:

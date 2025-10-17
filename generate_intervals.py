@@ -1,19 +1,17 @@
+
 #!/usr/bin/env python3
 import argparse
 import random
 import xml.etree.ElementTree as ET
 
-# ---------------- pitch math ----------------
-
 STEP_TO_INDEX = {'C':0,'D':1,'E':2,'F':3,'G':4,'A':5,'B':6}
 INDEX_TO_STEP = {v:k for k,v in STEP_TO_INDEX.items()}
-NAT_SEMITONES = [0,2,4,5,7,9,11]  # natural steps within octave
+NAT_SEMITONES = [0,2,4,5,7,9,11]
 
-# interval name -> (diatonic_steps, semitone_delta)
 INTERVAL_TABLE = {
     'm2': (1,1),  'M2': (1,2),
     'm3': (2,3),  'M3': (2,4),
-    'P4': (3,5),  'TT': (4,6),   # aug4
+    'P4': (3,5),  'TT': (4,6),
     'P5': (4,7),
     'm6': (5,8),  'M6': (5,9),
     'm7': (6,10), 'M7': (6,11),
@@ -21,8 +19,7 @@ INTERVAL_TABLE = {
 }
 
 def parse_csv_list(s):
-    if not s:
-        return []
+    if not s: return []
     return [t.strip() for t in s.split(',') if t.strip()]
 
 def note_is_pitched(note):
@@ -52,7 +49,7 @@ def clear_explicit_accidental(note):
 
 def midi_of(step, octave, alter):
     step_idx = STEP_TO_INDEX[step]
-    base = NAT_SEMITONES[step_idx] + 12 * (octave + 1)  # C4=60
+    base = NAT_SEMITONES[step_idx] + 12 * (octave + 1)
     return base + alter
 
 def diatonic_advance(step, octave, diatonic_steps, direction):
@@ -91,21 +88,11 @@ def duration_val(note):
 def note_type(note):
     return (note.findtext('type') or '').strip().lower()
 
-def staff_num(note):
-    s = note.findtext('staff')
-    try:
-        return int(s) if s is not None else 1
-    except Exception:
-        return 1
-
 def voice_id(note):
     v = note.findtext('voice')
     return v.strip() if v else '1'
 
-# ---------------- event extraction with time (multi-voice aware) ------------------------
-
 def collect_events_by_measure(part):
-    """Return measures; each measure is a list of events with onsets (respects <backup>/<forward>)."""
     measures = []
     for meas in part.findall('measure'):
         events = []
@@ -120,7 +107,6 @@ def collect_events_by_measure(part):
                     'dur': d,
                     'type': note_type(el),
                     'voice': voice_id(el),
-                    'staff': staff_num(el),
                     'pitch': get_pitch(el) if note_is_pitched(el) else None
                 }
                 events.append(ev)
@@ -136,10 +122,7 @@ def collect_events_by_measure(part):
         measures.append(events)
     return measures
 
-# ---------------- pairing (WHOLE base ↔ QUARTER target) --------------------------------
-
 def pair_whole_with_quarter(measure_events):
-    """Prefer same-onset, different-voice pairs; fallback to nearest later quarter."""
     pairs = []
     by_onset = {}
     for ev in measure_events:
@@ -153,42 +136,51 @@ def pair_whole_with_quarter(measure_events):
             cand = None
             for tgt in targets:
                 if tgt['voice'] != b['voice']:
-                    cand = tgt
-                    break
+                    cand = tgt; break
             if cand is None:
                 for t2 in onsets:
                     if t2 > t:
                         for ev2 in by_onset[t2]:
                             if ev2['type'] == 'quarter' and ev2['pitch'] and ev2['voice'] != b['voice']:
-                                cand = ev2
-                                break
+                                cand = ev2; break
                     if cand: break
             if cand is not None:
                 pairs.append((b, cand))
     return pairs
 
-# ---------------- main ------------------------------------------------------------------
+def append_profile_to_credit_words(root, profile_name: str):
+    if not profile_name: return 0
+    prof = profile_name.strip()
+    if not prof: return 0
+    credits = root.findall('credit')
+    if credits:
+        for cr in credits:
+            cw = cr.find('credit-words')
+            if cw is not None:
+                base = (cw.text or '').strip() or 'Intervals'
+                if '(Profile:' not in base:
+                    cw.text = f'{base} (Profile: {prof})'
+                return 1
+    credit = ET.Element('credit'); credit.set('page','1')
+    cw = ET.SubElement(credit, 'credit-words')
+    cw.text = f'Intervals (Profile: {prof})'
+    root.insert(0, credit)
+    return 1
 
 def main():
-    ap = argparse.ArgumentParser(
-        description='Intervals: tag-aware, multi-voice pairing (WHOLE base + QUARTER target).'
-    )
+    ap = argparse.ArgumentParser(description='Intervals generator with tags and profile title.')
     ap.add_argument('--input', required=True)
     ap.add_argument('--output', required=True)
-    ap.add_argument('--set', default='m2,M2,m3,M3,P4,TT,P5,m6,M6,m7,M7,P8',
-                    help='Comma list of interval names')
-    ap.add_argument('--direction', default='both', choices=['up','down','both'],
-                    help='Interval direction (used when position-tag=auto)')
+    ap.add_argument('--set', default='m2,M2,m3,M3,P4,TT,P5,m6,M6,m7,M7,P8')
+    ap.add_argument('--direction', default='both', choices=['up','down','both'])
     ap.add_argument('--position-tag', default='up', choices=['up','down','auto'],
-                    help='Force 2nd note above/below base (default: up)')
+                    help='Force the 2nd note above/below the base (default up)')
     ap.add_argument('--accidental-tags', default='',
-                    help='Comma list from {natural,sharp,flat}; empty=allow all')
-    ap.add_argument('--resample-attempts', type=int, default=50,
-                    help='Attempts per pair to find a tag-compliant interval')
-    ap.add_argument('--require-tag-match', type=str, default='true',
-                    help='true|false: if true and none match, leave target unchanged')
+                    help='Comma from {natural,sharp,flat} for the 2nd note; empty=allow all')
+    ap.add_argument('--resample-attempts', type=int, default=50)
+    ap.add_argument('--require-tag-match', type=str, default='true')
     ap.add_argument('--seed', type=int, default=None)
-    ap.add_argument('--profile-name', default='', help='Profile label to append to work-title')
+    ap.add_argument('--profile-name', default='', help='Append (Profile: NAME) to <credit-words>')
     args = ap.parse_args()
 
     if args.seed is not None:
@@ -196,9 +188,8 @@ def main():
 
     interval_set = [s for s in parse_csv_list(args.set) if s in INTERVAL_TABLE]
     if not interval_set:
-        interval_set = ['M2','m2','M3','m3','P4','TT','P5','M6','m6','M7','m7','P8']
+        interval_set = list(INTERVAL_TABLE.keys())
 
-    # accidental tags filter for 2nd note
     tags = parse_csv_list(args.accidental_tags)
     if not tags:
         allowed_alters = [0,1,-1]
@@ -208,33 +199,16 @@ def main():
         if 'sharp'   in tags: allowed_alters.append(1)
         if 'flat'    in tags: allowed_alters.append(-1)
 
-    # directions list; overridden by position-tag unless 'auto'
     directions = ['up','down'] if args.direction == 'both' else [args.direction]
     if args.position_tag in ('up','down'):
         directions = [args.position_tag]
 
     require_match = (str(args.require_tag_match).strip().lower() in ('1','true','yes','y'))
 
-    tree = ET.parse(args.input)
-    root = tree.getroot()
+    tree = ET.parse(args.input); root = tree.getroot()
 
-    # Add/append profile tag to <work-title>
-    label = (args.profile_name or '').strip()
-    if label:
-        work = root.find('work')
-        if work is None:
-            work = ET.Element('work')
-            root.insert(0, work)
-        wt = work.find('work-title')
-        if wt is None:
-            wt = ET.SubElement(work, 'work-title')
-            wt.text = f'Intervals (Profile: {label})'
-        else:
-            base_title = (wt.text or 'Intervals').strip()
-            if '(Profile:' not in base_title:
-                wt.text = f'{base_title} (Profile: {label})'
-            else:
-                wt.text = base_title
+    if args.profile_name:
+        append_profile_to_credit_words(root, args.profile_name)
 
     changed = 0
     for part in root.findall('part'):
@@ -243,33 +217,26 @@ def main():
             pairs = pair_whole_with_quarter(evs)
             for base_ev, tgt_ev in pairs:
                 base_step, base_oct, base_alt = base_ev['pitch']
-
                 candidates = [(ivl, d) for ivl in interval_set for d in directions]
                 random.shuffle(candidates)
-
                 chosen = None; tries = 0
                 while candidates and tries < args.resample_attempts:
                     ivl, direc = candidates.pop(); tries += 1
                     tgt = required_alter_for_interval(base_step, base_oct, base_alt, ivl, direc)
-                    if tgt == (None, None, None):
-                        continue
+                    if tgt == (None, None, None): continue
                     tgt_step, tgt_oct, tgt_alter = tgt
                     if tgt_alter in allowed_alters:
-                        chosen = (tgt_step, tgt_oct, tgt_alter)
-                        break
-
+                        chosen = (tgt_step, tgt_oct, tgt_alter); break
                 if chosen is None and not require_match:
-                    # lax fallback: any computable (ignores tags)
                     for ivl in interval_set:
                         for direc in directions:
                             tgt = required_alter_for_interval(base_step, base_oct, base_alt, ivl, direc)
                             if tgt != (None, None, None):
                                 chosen = tgt; break
                         if chosen: break
-
                 if chosen is not None:
-                    step, octv, alt = chosen
-                    set_pitch(tgt_ev['note'], step, octv, alt)
+                    s,o,a = chosen
+                    set_pitch(tgt_ev['note'], s,o,a)
                     clear_explicit_accidental(tgt_ev['note'])
                     changed += 1
 

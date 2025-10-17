@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 import argparse
 import subprocess
@@ -6,7 +5,7 @@ import sys
 from pathlib import Path
 
 try:
-    import yaml
+    import yaml  # pip install pyyaml
 except ImportError:
     print("PyYAML is required. Install with: pip install pyyaml", file=sys.stderr)
     sys.exit(1)
@@ -16,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 def run(cmd):
     subprocess.run([str(c) for c in cmd], check=True)
 
-def load_cfg(path: Path):
+def load_cfg(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return data
@@ -28,7 +27,6 @@ def apply_profile(cfg: dict, profile_name: str | None) -> dict:
     prof = profs.get(profile_name)
     if not prof:
         return cfg
-    # shallow-merge profile into cfg (dicts merged shallowly)
     merged = dict(cfg)
     for k, v in prof.items():
         if isinstance(v, dict) and isinstance(merged.get(k), dict):
@@ -40,9 +38,9 @@ def apply_profile(cfg: dict, profile_name: str | None) -> dict:
     return merged
 
 def main():
-    ap = argparse.ArgumentParser(description="Übungsblatt generator (with Arbeitsblatt pass).")
+    ap = argparse.ArgumentParser(description="Übungsblatt generator (PyYAML edition).")
     ap.add_argument("--config", required=True, help="Path to YAML config")
-    ap.add_argument("--profile", default=None, help="Optional profile name to apply")
+    ap.add_argument("--profile", default=None, help="Optional profile name to apply (also embedded into titles)")
     args = ap.parse_args()
 
     cfg_path = Path(args.config)
@@ -60,78 +58,81 @@ def main():
             except Exception:
                 pass
 
-    inputs = cfg.get("inputs", {})
+    inputs = cfg.get("inputs", {}) or {}
     seed = cfg.get("seed")
 
-    # ---- SCALES ----
+    # ---------------- SCALES ----------------
     scales_in = inputs.get("scales")
     if scales_in:
         scales_out = outdir / "Hoeren_scales.musicxml"
         cmd = [sys.executable, HERE / "generate_scales.py",
                "--input", scales_in, "--output", scales_out]
-        s_cfg = cfg.get("scales", {})
-        if isinstance(s_cfg, dict):
-            if "accidental_tags" in s_cfg:
-                cmd += ["--accidental-tags", ",".join(s_cfg["accidental_tags"])]
-            elif "accidentals" in s_cfg:
-                cmd += ["--accidentals", ",".join(s_cfg["accidentals"])]
-            if "placeholders" in s_cfg:
-                cmd += ["--placeholders", ",".join(s_cfg["placeholders"])]
-            if "alter_count" in s_cfg:
-                cmd += ["--alter-count", str(s_cfg["alter_count"])]
-            if "alter_ratio" in s_cfg:
-                cmd += ["--alter-ratio", str(s_cfg["alter_ratio"])]
+        s_cfg = cfg.get("scales", {}) or {}
+        if "accidental_tags" in s_cfg:
+            cmd += ["--accidental-tags", ",".join(s_cfg["accidental_tags"])]
+        elif "accidentals" in s_cfg:
+            cmd += ["--accidentals", ",".join(s_cfg["accidentals"])]
+        if "placeholders" in s_cfg:
+            cmd += ["--placeholders", ",".join(s_cfg["placeholders"])]
+        if "alter_count" in s_cfg:
+            cmd += ["--alter-count", str(s_cfg["alter_count"])]
+        if "alter_ratio" in s_cfg:
+            cmd += ["--alter-ratio", str(s_cfg["alter_ratio"])]
+        if "hide_articulations" in s_cfg:
+            cmd += ["--hide-articulations", str(s_cfg["hide_articulations"]).lower()]
+        if "target_voice" in s_cfg:
+            cmd += ["--target-voice", str(s_cfg["target_voice"])]
+        if "target_staff" in s_cfg:
+            cmd += ["--target-staff", str(s_cfg["target_staff"])]
         if seed is not None:
             cmd += ["--seed", str(seed)]
+        if args.profile:
+            cmd += ["--profile-name", args.profile]
         run(cmd)
 
-        # Auto-create scales Arbeitsblatt (hide all accidentals)
+        # Arbeitsblatt for scales
         run([sys.executable, HERE / "make_arbeitsblatt.py",
              "--mode", "scales",
              "--action", (cfg.get("worksheet", {}) or {}).get("scales", "hide"),
              "--input", scales_out,
              "--output", outdir / "Hoeren_scales_arbeitsblatt.musicxml"])
 
-    # ---- INTERVALS ----
+    # ---------------- INTERVALS ----------------
     intervals_in = inputs.get("intervals")
     if intervals_in:
         intervals_out = outdir / "Hoeren_intervals.musicxml"
         cmd = [sys.executable, HERE / "generate_intervals.py",
                "--input", intervals_in, "--output", intervals_out]
-        i_cfg = cfg.get("intervals", {})
-        if isinstance(i_cfg, dict):
-            if "set" in i_cfg:
-                cmd += ["--set", ",".join(i_cfg["set"])]
-            if "direction" in i_cfg:
-                cmd += ["--direction", i_cfg["direction"]]
-            # accidental tags
-            if "accidental_tags" in i_cfg:
-                cmd += ["--accidental-tags", ",".join(i_cfg["accidental_tags"])]
-            # position tag (up/down/auto)
-            pos_tag = i_cfg.get("position_tag") or i_cfg.get("position")
-            if pos_tag:
-                cmd += ["--position-tag", str(pos_tag).strip().lower()]
+        i_cfg = cfg.get("intervals", {}) or {}
+        if "set" in i_cfg:
+            cmd += ["--set", ",".join(i_cfg["set"])]
+        if "direction" in i_cfg:
+            cmd += ["--direction", i_cfg["direction"]]
+        if "accidental_tags" in i_cfg:
+            cmd += ["--accidental-tags", ",".join(i_cfg["accidental_tags"])]  # second-note filter
+        pos_tag = i_cfg.get("position_tag") or i_cfg.get("position")
+        if pos_tag:
+            cmd += ["--position-tag", str(pos_tag).strip().lower()]
         if seed is not None:
             cmd += ["--seed", str(seed)]
-        # Pass profile name for <work-title> tagging
         if args.profile:
-            cmd += ["--profile-name", args.profile]
+            cmd += ["--profile-name", args.profile]  # put profile label into <work-title> and <credit-words>
         run(cmd)
 
-        # intervals Arbeitsblatt
+        # Arbeitsblatt for intervals
         run([sys.executable, HERE / "make_arbeitsblatt.py",
              "--mode", "intervals",
              "--action", (cfg.get("worksheet", {}) or {}).get("intervals", "hide"),
              "--input", intervals_out,
              "--output", outdir / "Hoeren_intervals_arbeitsblatt.musicxml"])
 
-    # ---- CHORDS ----
+    # ---------------- CHORDS ----------------
     chords_in = inputs.get("chords")
     if chords_in:
         chords_out = outdir / "Hoeren_chords.musicxml"
         cmd = [sys.executable, HERE / "generate_chords.py",
                "--input", chords_in, "--output", chords_out]
-        c_cfg = cfg.get("chords", {})
+        c_cfg = cfg.get("chords", {}) or {}
         if seed is not None:
             cmd += ["--seed", str(seed)]
         run(cmd)
@@ -142,13 +143,13 @@ def main():
              "--input", chords_out,
              "--output", outdir / "Hoeren_chords_arbeitsblatt.musicxml"])
 
-    # ---- RHYTHMS ----
+    # ---------------- RHYTHMS ----------------
     rhythms_in = inputs.get("rhythms")
     if rhythms_in:
         rhythms_out = outdir / "Hoeren_rhythm.musicxml"
         cmd = [sys.executable, HERE / "generate_rhythms.py",
                "--input", rhythms_in, "--output", rhythms_out]
-        r_cfg = cfg.get("rhythms", {})
+        r_cfg = cfg.get("rhythms", {}) or {}
         if seed is not None:
             cmd += ["--seed", str(seed)]
         run(cmd)
