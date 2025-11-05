@@ -1,4 +1,3 @@
-
 # Übungsblatt Generator Toolkit
 
 A small toolkit to build ear‑training worksheets (`Übungsblatt`) and student versions (`Arbeitsblatt`) from MusicXML templates. It produces four sections:
@@ -156,6 +155,7 @@ python uebungsblatt_cli.py --config uebungsblatt.yaml [--profile NAME]
 ### What the CLI does per section
 
 - **Scales**
+  
   1. `generate_scales.py` → `OUT/Hoeren_scales.musicxml`
      - Single‑voice input & output.
      - Randomizes accidentals for configured placeholders.
@@ -165,14 +165,17 @@ python uebungsblatt_cli.py --config uebungsblatt.yaml [--profile NAME]
      - Makes **all accidentals invisible** (and inserts invisible accidentals if only `<alter>` is present).
 
 - **Intervals**
+  
   - `generate_intervals.py` → Übungsblatt
   - `make_arbeitsblatt.py --mode intervals` → hide/delete quarters (configurable)
 
 - **Chords**
+  
   - `generate_chords.py` → Übungsblatt
   - `make_arbeitsblatt.py --mode chords` → hide/delete upper staff (fallback: `<chord/>` tones)
 
 - **Rhythm**
+  
   - `generate_rhythms.py` → Übungsblatt
   - `make_arbeitsblatt.py --mode rhythms`
     - **Hide:** produces a **blank** page per measure by replacing notes with `<forward>` and removing `<backup>` to avoid timing corruption.
@@ -221,26 +224,33 @@ Your local versions may expose slightly different flags; the CLI passes:
 ### Modes
 
 - **scales / hide**  
+  
   - Keep playback exactly as in Übungsblatt.
   - Make **all accidentals invisible** by setting `print-object="no"` on `<accidental>`.
   - If a note has `<alter>` but no `<accidental>`, add an `<accidental print-object="no">…</accidental>` so **nothing prints**.
 
 - **intervals / hide**  
+  
   - Hide quarter notes (`print-object="no"`); whole notes remain as prompts.
 
 - **intervals / delete**  
+  
   - Remove quarter notes entirely.
 
 - **chords / hide**  
+  
   - Hide upper staff (`<staff>1</staff>`). Fallback: hide notes with `<chord/>` (upper chord tones).
 
 - **chords / delete**  
+  
   - Delete upper staff. Fallback: delete `<chord/>` notes.
 
 - **rhythms / hide**  
+  
   - **Blank page output:** remove all `<backup>`; replace each `<note>` with a `<forward>` of equal duration. Avoids timing corruption and draws nothing.
 
 - **rhythms / delete**  
+  
   - Convert pitched notes to rests; remove beams/flags/stems/notations to reduce clutter.
 
 ---
@@ -300,7 +310,7 @@ python uebungsblatt_cli.py --config uebungsblatt.yaml --profile exam
 
 Do whatever works for your classroom. If you publish, a mention is appreciated. 🎵
 
-##
+## 
 
 Install locally:
 

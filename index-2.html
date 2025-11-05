@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MusicXML Übungsblatt Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <main class="max-w-6xl mx-auto p-6 space-y-6">
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold">MusicXML Übungsblatt Generator</h1>
+      <div class="text-sm text-slate-600">Static, client‑side • works on GitHub Pages</div>
+    </header>
+
+    <!-- Global controls -->
+    <section class="grid md:grid-cols-3 gap-4">
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-3">Templates (upload)</h2>
+        <label class="block text-sm mb-1">Scales template (.musicxml)</label>
+        <input id="tpl-scales" type="file" accept=".musicxml,.xml" class="mb-3 w-full"/>
+        <label class="block text-sm mb-1">Intervals template (.musicxml)</label>
+        <input id="tpl-intervals" type="file" accept=".musicxml,.xml" class="mb-3 w-full"/>
+        <label class="block text-sm mb-1">Chords template (.musicxml)</label>
+        <input id="tpl-chords" type="file" accept=".musicxml,.xml" class="mb-3 w-full"/>
+        <label class="block text-sm mb-1">Rhythm template (.musicxml)</label>
+        <input id="tpl-rhythm" type="file" accept=".musicxml,.xml" class="w-full"/>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-3">Global</h2>
+        <label class="block text-sm mb-1">Profile name (for <credit-words>)</label>
+        <input id="profile" type="text" placeholder="EC1" class="w-full border rounded px-3 py-2 mb-3"/>
+
+        <label class="block text-sm mb-1">Seed (deterministic)</label>
+        <input id="seed" type="number" class="w-full border rounded px-3 py-2" placeholder="e.g. 42"/>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="font-semibold mb-3">Actions</h2>
+        <button id="btn-gen-all" class="w-full rounded-xl bg-slate-900 text-white py-2 mb-2 hover:bg-slate-800">Generate ALL</button>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-gen-scales" class="rounded-xl bg-indigo-600 text-white py-2 hover:bg-indigo-500">Scales</button>
+          <button id="btn-gen-intervals" class="rounded-xl bg-emerald-600 text-white py-2 hover:bg-emerald-500">Intervals</button>
+          <button id="btn-gen-chords" class="rounded-xl bg-amber-600 text-white py-2 hover:bg-amber-500">Chords</button>
+          <button id="btn-gen-rhythm" class="rounded-xl bg-rose-600 text-white py-2 hover:bg-rose-500">Rhythm</button>
+        </div>
+        <p id="status" class="text-xs text-slate-600 mt-3"></p>
+      </div>
+    </section>
+
+    <!-- Scales options -->
+    <section class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-semibold text-lg mb-2">Scales options</h2>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm mb-1">Accidental tags</label>
+          <select id="sc-acc-tags" class="w-full border rounded px-3 py-2">
+            <option value="natural,sharp,flat">natural, sharp, flat (all)</option>
+            <option value="sharp">sharp only</option>
+            <option value="flat">flat only</option>
+            <option value="natural">natural only</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Alter ratio (0..1)</label>
+          <input id="sc-alter-ratio" type="number" min="0" max="1" step="0.01" value="0.30" class="w-full border rounded px-3 py-2"/>
+        </div>
+        <div class="space-y-2">
+          <label class="inline-flex items-center gap-2"><input id="sc-hide-art" type="checkbox" class="accent-indigo-600" checked/> <span class="text-sm">Hide articulations</span></label><br/>
+          <label class="inline-flex items-center gap-2"><input id="sc-force-anchors" type="checkbox" class="accent-indigo-600" checked/> <span class="text-sm">Force anchors natural</span></label>
+          <div class="text-xs text-slate-500">Per bar, only first / apex / last remain visible; all others hidden.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Intervals options -->
+    <section class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-semibold text-lg mb-2">Intervals options</h2>
+      <div class="grid md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-sm mb-1">Set</label>
+          <input id="iv-set" type="text" class="w-full border rounded px-3 py-2" value="m2,M2,m3,M3,P4,TT,P5,m6,M6,m7,M7,P8" />
+          <div class="text-xs text-slate-500 mt-1">Comma list</div>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Direction</label>
+          <select id="iv-dir" class="w-full border rounded px-3 py-2">
+            <option value="both">both</option>
+            <option value="up">up</option>
+            <option value="down">down</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Position tag</label>
+          <select id="iv-pos" class="w-full border rounded px-3 py-2">
+            <option value="up">up</option>
+            <option value="down">down</option>
+            <option value="auto">auto</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm mb-1">Second‑note accidental tags</label>
+          <select id="iv-acc-tags" class="w-full border rounded px-3 py-2">
+            <option value="natural,sharp,flat">natural, sharp, flat (all)</option>
+            <option value="natural">natural only</option>
+            <option value="sharp">sharp only</option>
+            <option value="flat">flat only</option>
+          </select>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500 mt-3">Pairs whole‑note base with quarter‑note target (different voice) at the same onset; resamples to satisfy tags.</p>
+    </section>
+
+    <!-- Chords options (Arbeitsblatt rule only) -->
+    <section class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-semibold text-lg mb-2">Chords options</h2>
+      <p class="text-sm text-slate-600">No generation rules applied; will make Arbeitsblatt by hiding upper‑staff notes (keeping bass staff visible).</p>
+    </section>
+
+    <!-- Rhythm options (Arbeitsblatt rule only) -->
+    <section class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-semibold text-lg mb-2">Rhythm options</h2>
+      <p class="text-sm text-slate-600">Arbeitsblatt hides all notes, rests, beams, and related marks.</p>
+    </section>
+
+    <!-- Downloads -->
+    <section class="bg-white rounded-2xl shadow p-4">
+      <h2 class="font-semibold text-lg mb-3">Downloads</h2>
+      <div id="downloads" class="grid md:grid-cols-2 gap-3 text-sm"></div>
+    </section>
+  </main>
+
+  <script>
+  /*****************
+   * Defaults loader (from repo)
+   *****************/
+  const repoDefaults = { scales: null, intervals: null, chords: null, rhythm: null };
+  async function tryFetch(path){
+    try{
+      const res = await fetch(path, {cache:'no-store'});
+      if(!res.ok) return null;
+      const txt = await res.text();
+      return txt && txt.trim().length ? txt : null;
+    }catch{ return null; }
+  }
+  async function loadRepoDefaults(){
+    const map = {
+      scales:   'sibelius/Hoeren_scales.musicxml',
+      intervals:'sibelius/Hoeren_intervals.musicxml',
+      chords:   'sibelius/Hoeren_chords.musicxml',
+      rhythm:   'sibelius/Hoeren_rhythm.musicxml'
+    };
+    for(const key of Object.keys(map)){
+      const txt = await tryFetch(map[key]);
+      repoDefaults[key] = txt;
+      const badge = document.getElementById(`badge-${key}`);
+      if(badge){
+        if(txt){ badge.textContent = 'default loaded'; badge.className='text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700'; }
+        else    { badge.textContent = 'no default';   badge.className='text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-600'; }
+      }
+    }
+  }
+
+  /*****************
+   * Utils
+   *****************/
+  const $ = (sel) => document.querySelector(sel);
+  const status = (msg) => { document.getElementById('status').textContent = msg; };
+
+  function readFileAsText(file){
+    return new Promise((resolve,reject)=>{
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsText(file);
+    });
+  }
+
+  function downloadText(filename, text){
+    const blob = new Blob([text], {type:'application/xml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.textContent = filename;
+    const wrap = document.createElement('div');
+    wrap.className = 'flex items-center justify-between bg-slate-100 rounded-lg px-3 py-2';
+    wrap.appendChild(a);
+    document.getElementById('downloads').appendChild(wrap);
+    setTimeout(()=>URL.revokeObjectURL(url), 60_000);
+  }
+
+  // RNG (deterministic)
+  function mulberry32(a){
+    return function(){
+      let t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+  }
+  function choice(rng, arr){ return arr[Math.floor(rng()*arr.length)] }
+  function sample(rng, arr, k){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){ const j = Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a.slice(0, k);
+  }
+
+  /*****************
+   * Music helpers
+   *****************/
+  const STEP_TO_INDEX = {C:0,D:1,E:2,F:3,G:4,A:5,B:6};
+  const INDEX_TO_STEP = Object.fromEntries(Object.entries(STEP_TO_INDEX).map(([k,v])=>[v,k]));
+  const NAT_SEMITONES = [0,2,4,5,7,9,11];
+  function midiOf(step, octave, alter){
+    const stepIdx = STEP_TO_INDEX[step];
+    const base = NAT_SEMITONES[stepIdx] + 12 * (octave + 1); // C4=60
+    return base + (alter||0);
+  }
+  function getPitch(note){
+    const p = note.querySelector('pitch');
+    if(!p) return null;
+    const step = (p.querySelector('step')?.textContent||'').toUpperCase();
+    const oct = parseInt(p.querySelector('octave')?.textContent||'',10);
+    if(!step || Number.isNaN(oct)) return null;
+    const alterEl = p.querySelector('alter');
+    const alter = alterEl ? parseInt(alterEl.textContent,10) : 0;
+    return {step, octave:oct, alter};
+  }
+  function setAlter(note, alter){
+    const p = note.querySelector('pitch');
+    if(!p) return;
+    let al = p.querySelector('alter');
+    if(!al){ al = p.appendChild(note.ownerDocument.createElement('alter')); }
+    al.textContent = String(parseInt(alter,10));
+  }
+  function clearAccidental(note){
+    note.querySelectorAll('accidental').forEach(el=>el.remove());
+  }
+  function setVisible(note, yes){
+    if(yes){ note.removeAttribute('print-object'); }
+    else { note.setAttribute('print-object','no'); }
+  }
+  function isPitched(note){ return !!note.querySelector('pitch'); }
+  function isVisible(note){ return (note.getAttribute('print-object')||'').toLowerCase() !== 'no'; }
+
+  function appendProfileCredit(doc, profile){
+    if(!profile) return;
+    const credits = Array.from(doc.querySelectorAll('credit'));
+    for(const cr of credits){
+      const cw = cr.querySelector('credit-words');
+      if(cw){
+        const base = (cw.textContent||'').trim() || 'Title';
+        if(!base.includes('(Profile:')) cw.textContent = `${base} (Profile: ${profile})`;
+        return;
+      }
+    }
+    const credit = doc.createElement('credit');
+    credit.setAttribute('page','1');
+    const cw = doc.createElement('credit-words');
+    cw.textContent = `Title (Profile: ${profile})`;
+    credit.appendChild(cw);
+    const root = doc.documentElement;
+    root.insertBefore(credit, root.firstChild);
+  }
+
+  /*****************
+   * SCALES (per‑bar 1st/apex/last visible; alter hidden)
+   *****************/
+  function generateScales(xmlText, opts){
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'application/xml');
+    const rng = mulberry32((opts.seed ?? 42) >>> 0);
+
+    if(opts.hideArticulations){
+      doc.querySelectorAll('notations articulations > *').forEach(el=>el.setAttribute('print-object','no'));
+    }
+    appendProfileCredit(doc, opts.profile);
+
+    const allNotes = Array.from(doc.querySelectorAll('note pitch')).map(p=>p.parentElement);
+    allNotes.forEach(n=>setVisible(n,false));
+
+    const anchors = [];
+    doc.querySelectorAll('part').forEach(part=>{
+      part.querySelectorAll('measure').forEach(meas=>{
+        const notes = Array.from(meas.children).filter(el=>el.tagName==='note' && isPitched(el));
+        if(notes.length===0) return;
+        const first = notes[0];
+        const last  = notes[notes.length-1];
+        const apex  = notes.reduce((a,b)=> (midiOf(...Object.values(getPitch(a)))>midiOf(...Object.values(getPitch(b)))?a:b));
+        [first,apex,last].forEach(n=>{ if(!anchors.includes(n)) anchors.push(n); setVisible(n,true); });
+      });
+    });
+
+    if(opts.forceAnchorsNatural){
+      anchors.forEach(n=>{ setAlter(n,0); clearAccidental(n); });
+    }
+
+    const hiddenPool = allNotes.filter(n=>!isVisible(n));
+    const total = hiddenPool.length;
+    let k = total;
+    if(opts.alterCount!=null){ k = Math.max(0, Math.min(opts.alterCount, total)); }
+    else if(opts.alterRatio!=null){ k = Math.round(Math.max(0, Math.min(1, opts.alterRatio)) * total); }
+
+    const toAlter = new Set(sample(rng, hiddenPool, k));
+    const tagMap = {natural:0, sharp:1, flat:-1};
+    const allowed = (opts.accTags?.length? opts.accTags : ['natural','sharp','flat']).map(t=>tagMap[t]);
+
+    hiddenPool.forEach(n=>{
+      if(toAlter.has(n)){
+        setAlter(n, choice(rng, allowed));
+        clearAccidental(n);
+      }else{
+        setAlter(n, 0);
+        clearAccidental(n);
+      }
+    });
+
+    return new XMLSerializer().serializeToString(doc);
+  }
+
+  /*****************
+   * INTERVALS (pair whole base with quarter target)
+   *****************/
+  const INTERVAL_TABLE = {
+    m2:[1,1], M2:[1,2], m3:[2,3], M3:[2,4], P4:[3,5], TT:[4,6], P5:[4,7],
+    m6:[5,8], M6:[5,9], m7:[6,10], M7:[6,11], P8:[7,12]
+  };
+  function diatonicAdvance(step, octave, dSteps, dir){
+    const up = dir!=='down';
+    const sidx = STEP_TO_INDEX[step];
+    const newIdx = sidx + (up? dSteps: -dSteps);
+    const wraps = Math.floor(newIdx/7);
+    const idx = ((newIdx%7)+7)%7;
+    const stepNew = INDEX_TO_STEP[idx];
+    const octNew = octave + wraps + (newIdx<0 && (newIdx%7)!==0 ? -1: 0);
+    return [stepNew, octNew];
+  }
+  function requiredAlter(base, ivlName, dir){
+    let [dSteps, semis] = INTERVAL_TABLE[ivlName];
+    if(dir==='down') semis = -semis;
+    const baseMidi = midiOf(base.step, base.octave, base.alter||0);
+    const [tStep, tOct] = diatonicAdvance(base.step, base.octave, dSteps, dir);
+    const naturalMidi = midiOf(tStep, tOct, 0);
+    const targetMidi = baseMidi + semis;
+    const alter = targetMidi - naturalMidi;
+    if(alter < -2 || alter > 2) return null;
+    return {step:tStep, octave:tOct, alter};
+  }
+  function generateIntervals(xmlText, opts){
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'application/xml');
+    const rng = mulberry32((opts.seed ?? 42) >>> 0);
+
+    appendProfileCredit(doc, opts.profile);
+
+    const parts = Array.from(doc.querySelectorAll('part'));
+    let changed = 0;
+
+    function durVal(n){ const d=n.querySelector('duration'); return d? parseInt(d.textContent,10):0; }
+    function typeOf(n){ const t=n.querySelector('type'); return (t? t.textContent:'').trim().toLowerCase(); }
+    function voiceOf(n){ const v=n.querySelector('voice'); return (v? v.textContent:'1').trim(); }
+
+    parts.forEach(part=>{
+      const measures = Array.from(part.querySelectorAll('measure'));
+      measures.forEach(meas=>{
+        const events = [];
+        let t=0;
+        Array.from(meas.children).forEach(el=>{
+          if(el.tagName==='note'){
+            const d = durVal(el);
+            events.push({el, onset:t, dur:d, voice:voiceOf(el), type:typeOf(el), pitch:getPitch(el)});
+            t += d;
+          } else if(el.tagName==='forward'){
+            t += parseInt(el.querySelector('duration')?.textContent||'0',10);
+          } else if(el.tagName==='backup'){
+            t -= parseInt(el.querySelector('duration')?.textContent||'0',10);
+          }
+        });
+        // pair whole base with quarter target at same onset (prefer other voice)
+        const byOnset = new Map();
+        for(const ev of events){ if(!byOnset.has(ev.onset)) byOnset.set(ev.onset, []); byOnset.get(ev.onset).push(ev); }
+        const onsets = Array.from(byOnset.keys()).sort((a,b)=>a-b);
+        for(const o of onsets){
+          const group = byOnset.get(o);
+          const bases = group.filter(e=>e.type==='whole' && e.pitch);
+          const targetsSame = group.filter(e=>e.type==='quarter' && e.pitch);
+          for(const b of bases){
+            let tgt = targetsSame.find(e=>e.voice!==b.voice) || targetsSame[0];
+            if(!tgt){
+              // fallback: search next onsets
+              for(const oo of onsets){ if(oo>o){ const g2 = byOnset.get(oo); tgt = g2.find(e=>e.type==='quarter' && e.pitch && e.voice!==b.voice) || g2.find(e=>e.type==='quarter' && e.pitch); if(tgt) break; } }
+            }
+            if(!tgt) continue;
+
+            const dirs = opts.positionTag==='up' ? ['up'] : opts.positionTag==='down' ? ['down'] : (opts.direction==='up'?['up']:opts.direction==='down'?['down']:['up','down']);
+            const set = opts.set.length? opts.set : Object.keys(INTERVAL_TABLE);
+            const allowed = (opts.accTags?.length? opts.accTags : ['natural','sharp','flat']).map(t=> ({natural:0,sharp:1,flat:-1})[t]);
+            const candidates = [];
+            for(const iv of set){ for(const d of dirs){ candidates.push([iv,d]); } }
+            for(let i=candidates.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [candidates[i],candidates[j]]=[candidates[j],candidates[i]]; }
+
+            let chosen = null;
+            for(const [iv, d] of candidates){
+              const res = requiredAlter(getPitch(b.el), iv, d);
+              if(!res) continue;
+              if(allowed.includes(res.alter)){ chosen = res; break; }
+            }
+            if(chosen){
+              const p = tgt.el.querySelector('pitch');
+              if(!p) continue;
+              let st = p.querySelector('step'); if(!st){ st = p.appendChild(doc.createElement('step')); }
+              let oc = p.querySelector('octave'); if(!oc){ oc = p.appendChild(doc.createElement('octave')); }
+              let al = p.querySelector('alter'); if(!al){ al = p.appendChild(doc.createElement('alter')); }
+              st.textContent = chosen.step; oc.textContent = String(chosen.octave); al.textContent = String(chosen.alter);
+              tgt.el.querySelectorAll('accidental').forEach(x=>x.remove());
+              changed++;
+            }
+          }
+        }
+      });
+    });
+
+    return new XMLSerializer().serializeToString(doc);
+  }
+
+  /*****************
+   * Arbeitsblatt passes (hide rather than delete)
+   *****************/
+  function makeArbeitsblatt(xmlText, mode){
+    const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+
+    if(mode==='scales'){
+      doc.querySelectorAll('notations articulations > *').forEach(el=>el.setAttribute('print-object','no'));
+    }
+    else if(mode==='intervals'){
+      doc.querySelectorAll('note').forEach(n=>{
+        const t = (n.querySelector('type')?.textContent||'').trim().toLowerCase();
+        if(t==='quarter') n.setAttribute('print-object','no');
+      });
+    }
+    else if(mode==='chords'){
+      doc.querySelectorAll('note').forEach(n=>{
+        const st = (n.querySelector('staff')?.textContent||'').trim();
+        if(st==='' || st==='1') n.setAttribute('print-object','no');
+        else n.removeAttribute('print-object');
+      });
+    }
+    else if(mode==='rhythms'){
+      doc.querySelectorAll('note, rest, beam, dot, tuplet, notations > *').forEach(el=>{
+        if(el.setAttribute) el.setAttribute('print-object','no');
+      });
+    }
+
+    return new XMLSerializer().serializeToString(doc);
+  }
+
+  /*****************
+   * UI helpers
+   *****************/
+  async function getTemplateText(inputId, key){
+    const f = document.getElementById(inputId).files[0];
+    const useRepo = document.getElementById('use-repo-defaults').checked;
+    if(f) return await readFileAsText(f);
+    if(useRepo && repoDefaults[key]) return repoDefaults[key];
+    throw new Error('Missing template: ' + inputId + ' (and no repo default found)');
+  }
+
+  function gatherGlobal(){
+    const seed = parseInt(document.getElementById('seed').value||'42',10);
+    const profile = document.getElementById('profile').value.trim();
+    return {seed, profile};
+  }
+
+  function gatherScales(){
+    const accSel = document.getElementById('sc-acc-tags').value.split(',').map(s=>s.trim());
+    const alterRatio = parseFloat(document.getElementById('sc-alter-ratio').value||'1');
+    return {
+      accTags: accSel,
+      alterRatio: isNaN(alterRatio)? 1 : alterRatio,
+      hideArticulations: document.getElementById('sc-hide-art').checked,
+      forceAnchorsNatural: document.getElementById('sc-force-anchors').checked,
+    };
+  }
+
+  function gatherIntervals(){
+    return {
+      set: document.getElementById('iv-set').value.split(',').map(s=>s.trim()).filter(Boolean),
+      direction: document.getElementById('iv-dir').value,
+      positionTag: document.getElementById('iv-pos').value,
+      accTags: document.getElementById('iv-acc-tags').value.split(',').map(s=>s.trim()).filter(Boolean)
+    };
+  }
+
+  async function generateScalesFlow(){
+    status('Loading scales template…');
+    const xml = await getTemplateText('tpl-scales','scales');
+    const g = gatherGlobal();
+    const s = gatherScales();
+    const result = generateScales(xml, { ...g, ...s });
+    downloadText('Hoeren_scales.musicxml', result);
+    const ab = makeArbeitsblatt(result, 'scales');
+    downloadText('Hoeren_scales_arbeitsblatt.musicxml', ab);
+    status('Scales generated.');
+  }
+
+  async function generateIntervalsFlow(){
+    status('Loading intervals template…');
+    const xml = await getTemplateText('tpl-intervals','intervals');
+    const g = gatherGlobal();
+    const i = gatherIntervals();
+    const result = generateIntervals(xml, { ...g, ...i });
+    downloadText('Hoeren_intervals.musicxml', result);
+    const ab = makeArbeitsblatt(result, 'intervals');
+    downloadText('Hoeren_intervals_arbeitsblatt.musicxml', ab);
+    status('Intervals generated.');
+  }
+
+  async function generateChordsFlow(){
+    status('Loading chords template…');
+    const xml = await getTemplateText('tpl-chords','chords');
+    downloadText('Hoeren_chords.musicxml', xml);
+    const ab = makeArbeitsblatt(xml, 'chords');
+    downloadText('Hoeren_chords_arbeitsblatt.musicxml', ab);
+    status('Chords processed.');
+  }
+
+  async function generateRhythmFlow(){
+    status('Loading rhythm template…');
+    const xml = await getTemplateText('tpl-rhythm','rhythm');
+    downloadText('Hoeren_rhythm.musicxml', xml);
+    const ab = makeArbeitsblatt(xml, 'rhythms');
+    downloadText('Hoeren_rhythm_arbeitsblatt.musicxml', ab);
+    status('Rhythm processed.');
+  }
+
+  document.getElementById('btn-gen-scales').addEventListener('click', async ()=>{
+    try{ await generateScalesFlow(); } catch(e){ status(e.message||String(e)); }
+  });
+  document.getElementById('btn-gen-intervals').addEventListener('click', async ()=>{
+    try{ await generateIntervalsFlow(); } catch(e){ status(e.message||String(e)); }
+  });
+  document.getElementById('btn-gen-chords').addEventListener('click', async ()=>{
+    try{ await generateChordsFlow(); } catch(e){ status(e.message||String(e)); }
+  });
+  document.getElementById('btn-gen-rhythm').addEventListener('click', async ()=>{
+    try{ await generateRhythmFlow(); } catch(e){ status(e.message||String(e)); }
+  });
+  document.getElementById('btn-gen-all').addEventListener('click', async ()=>{
+    document.getElementById('downloads').innerHTML='';
+    try{
+      await generateScalesFlow();
+      await generateIntervalsFlow();
+      await generateChordsFlow();
+      await generateRhythmFlow();
+      status('All sections generated.');
+    }catch(e){ status(e.message||String(e)); }
+  });
+
+  // Load defaults on startup
+  (async()=>{
+    await loadRepoDefaults();
+  })();
+  </script>
+
+  <footer class="max-w-6xl mx-auto px-6 pb-10">
+    <div class="text-sm text-slate-500">Made by <a href="https://www.artacho.at" target="_blank" class="underline">Adrián Artacho</a></div>
+  </footer>
+</body>
+</html>
