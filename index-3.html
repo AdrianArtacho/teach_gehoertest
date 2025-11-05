@@ -151,19 +151,9 @@
    * Defaults loader (from repo)
    *****************/
   const repoDefaults = { scales: null, intervals: null, chords: null, rhythm: null };
-  async function tryFetch(pathOrPaths){
-    const paths = Array.isArray(pathOrPaths) ? pathOrPaths : [pathOrPaths];
-    for(const p of paths){
-      try{
-        const res = await fetch(p, {cache:'no-store'});
-        if(res.ok){
-          const txt = await res.text();
-          if(txt && txt.trim().length) return {text: txt, path: p};
-        }
-      }catch(e){ /* try next */ }
-    }
-    return null;
-  });
+  async function tryFetch(path){
+    try{
+      const res = await fetch(path, {cache:'no-store'});
       if(!res.ok) return null;
       const txt = await res.text();
       return txt && txt.trim().length ? txt : null;
@@ -171,10 +161,10 @@
   }
   async function loadRepoDefaults(){
     const map = {
-      scales:   ['sibelius/Hoeren_scales.musicxml',   '../sibelius/Hoeren_scales.musicxml'],
-      intervals:['sibelius/Hoeren_intervals.musicxml','../sibelius/Hoeren_intervals.musicxml'],
-      chords:   ['sibelius/Hoeren_chords.musicxml',   '../sibelius/Hoeren_chords.musicxml'],
-      rhythm:   ['sibelius/Hoeren_rhythm.musicxml',   '../sibelius/Hoeren_rhythm.musicxml']
+      scales:   'sibelius/Hoeren_scales.musicxml',
+      intervals:'sibelius/Hoeren_intervals.musicxml',
+      chords:   'sibelius/Hoeren_chords.musicxml',
+      rhythm:   'sibelius/Hoeren_rhythm.musicxml'
     };
     for(const key of Object.keys(map)){
       const txt = await tryFetch(map[key]);
@@ -203,27 +193,15 @@
   }
 
   function downloadText(filename, text){
-    try{
-      const blob = new Blob([text], {type:'application/octet-stream'}); // broader MIME avoids Safari oddities
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.textContent = filename; a.rel = 'noopener';
-      // keep a visible link as a fallback
-      const wrap = document.createElement('div');
-      wrap.className = 'flex items-center justify-between bg-slate-100 rounded-lg px-3 py-2';
-      wrap.appendChild(a);
-      document.getElementById('downloads').appendChild(wrap);
-      // auto-trigger download (helps Safari/Firefox)
-      setTimeout(()=>{
-        try { a.click(); } catch(_) { window.open(url, '_blank'); }
-      }, 0);
-      // revoke later (do NOT revoke immediately or Safari says "Network error")
-      const revoke = () => { URL.revokeObjectURL(url); window.removeEventListener('focus', revoke); };
-      window.addEventListener('focus', revoke);
-      setTimeout(revoke, 5 * 60 * 1000); // 5 minutes safety
-    }catch(err){
-      status('Download failed: ' + (err?.message || String(err)));
-    }
+    const blob = new Blob([text], {type:'application/xml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.textContent = filename;
+    const wrap = document.createElement('div');
+    wrap.className = 'flex items-center justify-between bg-slate-100 rounded-lg px-3 py-2';
+    wrap.appendChild(a);
+    document.getElementById('downloads').appendChild(wrap);
+    setTimeout(()=>URL.revokeObjectURL(url), 60_000);
   }
 
   // RNG (deterministic)
