@@ -147,45 +147,56 @@
   </main>
 
   <script>
-  /*****************
-   * Defaults loader (from repo)
-   *****************/
-  const repoDefaults = { scales: null, intervals: null, chords: null, rhythm: null };
-  async function tryFetch(pathOrPaths){
-    const paths = Array.isArray(pathOrPaths) ? pathOrPaths : [pathOrPaths];
-    for(const p of paths){
-      try{
-        const res = await fetch(p, {cache:'no-store'});
-        if(res.ok){
-          const txt = await res.text();
-          if(txt && txt.trim().length) return {text: txt, path: p};
-        }
-      }catch(e){ /* try next */ }
-    }
-    return null;
-  });
-      if(!res.ok) return null;
+/*****************
+ * Defaults loader (from repo)
+ *****************/
+const repoDefaults = { scales: null, intervals: null, chords: null, rhythm: null };
+
+async function tryFetch(pathOrPaths){
+  const paths = Array.isArray(pathOrPaths) ? pathOrPaths : [pathOrPaths];
+
+  for (const p of paths){
+    try{
+      // wichtig: URL relativ zur aktuellen Seite auflösen (funktioniert sauber bei GitHub Pages /repo/)
+      const url = new URL(p, window.location.href).toString();
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+
       const txt = await res.text();
-      return txt && txt.trim().length ? txt : null;
-    }catch{ return null; }
+      if (txt && txt.trim().length){
+        return { text: txt, path: p };
+      }
+    }catch(e){
+      // try next candidate path
+    }
   }
-  async function loadRepoDefaults(){
-    const map = {
-      scales:   ['sibelius/Hoeren_scales.musicxml',   '../sibelius/Hoeren_scales.musicxml'],
-      intervals:['sibelius/Hoeren_intervals.musicxml','../sibelius/Hoeren_intervals.musicxml'],
-      chords:   ['sibelius/Hoeren_chords.musicxml',   '../sibelius/Hoeren_chords.musicxml'],
-      rhythm:   ['sibelius/Hoeren_rhythm.musicxml',   '../sibelius/Hoeren_rhythm.musicxml']
-    };
-    for(const key of Object.keys(map)){
-      const txt = await tryFetch(map[key]);
-      repoDefaults[key] = txt;
-      const badge = document.getElementById(`badge-${key}`);
-      if(badge){
-        if(txt){ badge.textContent = 'default loaded'; badge.className='text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700'; }
-        else    { badge.textContent = 'no default';   badge.className='text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-600'; }
+  return null;
+}
+
+async function loadRepoDefaults(){
+  const map = {
+    scales:    ['sibelius/Hoeren_scales.musicxml',    './sibelius/Hoeren_scales.musicxml',    '../sibelius/Hoeren_scales.musicxml'],
+    intervals: ['sibelius/Hoeren_intervals.musicxml', './sibelius/Hoeren_intervals.musicxml', '../sibelius/Hoeren_intervals.musicxml'],
+    chords:    ['sibelius/Hoeren_chords.musicxml',    './sibelius/Hoeren_chords.musicxml',    '../sibelius/Hoeren_chords.musicxml'],
+    rhythm:    ['sibelius/Hoeren_rhythm.musicxml',    './sibelius/Hoeren_rhythm.musicxml',    '../sibelius/Hoeren_rhythm.musicxml']
+  };
+
+  for (const key of Object.keys(map)){
+    const found = await tryFetch(map[key]);          // {text, path} | null
+    repoDefaults[key] = found ? found.text : null;   // <-- HIER: wirklich nur Text speichern
+
+    const badge = document.getElementById(`badge-${key}`);
+    if (badge){
+      if (repoDefaults[key]){
+        badge.textContent = 'default loaded';
+        badge.className = 'text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700';
+      } else {
+        badge.textContent = 'no default';
+        badge.className = 'text-xs px-2 py-0.5 rounded bg-slate-200 text-slate-600';
       }
     }
   }
+}
 
   /*****************
    * Utils
