@@ -11,6 +11,8 @@ A small toolkit to build ear‑training worksheets (`Übungsblatt`) and student 
 
 The toolkit is **profile‑able** via YAML, deterministic with a seed, and generates **Arbeitsblatt** variants automatically (including a special pipeline for scales).
 
+![img/gui.png](img/gui.png)
+
 ---
 
 ## Quick Start
